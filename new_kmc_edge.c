@@ -236,7 +236,8 @@ void grow(void)
     // second entry is rate of addition of pvp multiplied by number of sites
     psum[counter++] = ktot += rate_add_pvp*nsites;
 
-    // the rest of the partial sum contains rates for each individual crystal. loop through the linked list to get the crystals
+    // the rest of the partial sum contains rates for each individual crystal. 
+    // loop through the linked list to get the crystals
     for (i = 0, j = crystals_hoc; i < ncrystals; i++, j = ll[j])
     {
         psum[counter++] = ktot += lattice[j].rate;
