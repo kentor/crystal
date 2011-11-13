@@ -4,7 +4,6 @@
 #include <assert.h>
 #include <gsl/gsl_rng.h>
 #include "new_lattice.h"
-#include "flags.h"
 
 void seed_crystal(int radius);
 void grow(void);
@@ -15,7 +14,6 @@ void add_pvp_en(int site);
 void rm_pvp_en(int site);
 void update_energy(int site);
 void check(void);
-void print_progress(int current, int final);
 int is_on_face(int site);
 int is_crystal_id(int x, int y, int z);
 
@@ -190,29 +188,6 @@ void seed_crystal(int radius)
         if (dx*dx + dy*dy + dz*dz < radius*radius)
             add_crystal_en(i);
     }
-}
-
-void print_progress(int current, int final)
-{
-    float f;
-    int i, bars;
-    int max_bars = 50;
-    
-    f = (float) current / final;
-
-    bars = current / (final / max_bars);
-
-    printf("  ");
-    printf("%3d%% ", (int)(100*f));
-    printf("[");
-    for (i = 0; i < bars; i++)
-        printf("=");
-    for (i = bars; i < max_bars; i++)
-        printf(" ");
-    printf("] ");
-    printf("%d/%d ", current, final);
-    printf("\r");
-    fflush(stdout);
 }
 
 void grow(void)
