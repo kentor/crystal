@@ -4,8 +4,44 @@
 #include <assert.h>
 #include <gsl/gsl_rng.h>
 #include "new_lattice.h"
-#include "flags.h"
 
+/* function prototypes */
+void init_lattice(int argc, char **argv);
+
+void seed_crystal_cube(int radius);
+
+void add_crystal(int site);
+void rm_crystal(int site);
+void mv_crystal(int crystal, int site);
+void add_pvp(int site);
+void rm_pvp(int site);
+
+int is_crystal(int site);
+int is_surface_site(int site);
+int is_vacuum(int site);
+int is_neigh(int site1, int site2);
+int is_edge(int site);
+int is_on_face(int site);
+int is_crystal_by_id(int x, int y, int z);
+
+void add_to_sc_ll(int site);
+void rm_from_sc_ll(int site);
+void add_to_ss_ll(int site);
+void rm_from_ss_ll(int site);
+void add_to_pvp_ll(int site);
+void rm_from_pvp_ll(int site);
+
+int rand_ss(void);
+
+int rand_crystal_neigh(int site);
+int nu_crystal_neigh(int site);
+int nu_pvp_neigh(int site);
+
+void draw(int max_crystals, int max_pvp);
+void print_site_info(int site);
+void clean_up(void);
+
+/* declare variables */
 int m;                      // number of cells per edge length
 int Nsites;                 // number of total sites
 const int A = 2;            // spacing between cells
@@ -86,7 +122,6 @@ void init_lattice(int argc, char **argv)
             lattice[i].nn[j] = EMPTY;
         lattice[i].edge = 0;
         lattice[i].energy = 0;
-        lattice[i].bonus_energy = 0;
         lattice[i].rate = 1;
     }
 
@@ -396,6 +431,52 @@ int is_edge(int site)
     return lattice[site].edge;
 }
 
+int is_on_face(int site)
+{
+    int x = lattice[site].pos[0];
+    int y = lattice[site].pos[1];
+    int z = lattice[site].pos[2];
+
+    // check bottom 4 sites
+    if (x != 0 && x != 2*m-1 && y != 0 && y != 2*m-1 && z != 0)
+        if (is_crystal_by_id(x-1,y,z-1) && is_crystal_by_id(x,y-1,z-1) && is_crystal_by_id(x+1,y,z-1) && is_crystal_by_id(x,y+1,z-1))
+            return 1;
+
+    // check left 4 sites
+    if (x != 0 && y != 0 && y != 2*m-1 && z != 0 && z != 2*m-1)
+        if (is_crystal_by_id(x-1,y-1,z) && is_crystal_by_id(x-1,y,z-1) && is_crystal_by_id(x-1,y,z+1) && is_crystal_by_id(x-1,y+1,z))
+            return 1;
+
+    // check top 4 sites
+    if (x != 0 && x != 2*m-1 && y != 0 && y != 2*m-1 && z != 2*m-1)
+        if (is_crystal_by_id(x-1,y,z+1) && is_crystal_by_id(x,y-1,z+1) && is_crystal_by_id(x,y+1,z+1) && is_crystal_by_id(x+1,y,z+1))
+            return 1;
+
+    // check right 4 sites
+    if (x != 2*m-1 && y != 0 && y != 2*m-1 && z != 0 && z != 2*m-1)
+        if (is_crystal_by_id(x+1,y-1,z) && is_crystal_by_id(x+1,y,z-1) && is_crystal_by_id(x+1,y,z+1) && is_crystal_by_id(x+1,y+1,z))
+            return 1;
+
+    // check front 4 sites
+    if (x != 0 && x != 2*m-1 && y != 0 && z != 0 && z != 2*m-1)
+        if (is_crystal_by_id(x-1,y-1,z) && is_crystal_by_id(x,y-1,z-1) && is_crystal_by_id(x,y-1,z+1) && is_crystal_by_id(x+1,y-1,z))
+            return 1;
+
+    // check back 4 sites
+    if (x != 0 && x != 2*m-1 && y != 2*m-1 && z != 0 && z != 2*m-1)
+        if (is_crystal_by_id(x-1,y+1,z) && is_crystal_by_id(x,y+1,z-1) && is_crystal_by_id(x+1,y+1,z) && is_crystal_by_id(x,y+1,z+1))
+            return 1;
+
+    return 0;
+}
+
+int is_crystal_by_id(int x, int y, int z)
+{
+    extern int ***id;
+
+    return is_crystal(id[x][y][z]);
+}
+
 void add_to_sc_ll(int site)
 {
     ll[site] = crystals_hoc;
@@ -565,7 +646,7 @@ void print_site_info(int site)
     printf("\n");
 }
 
-void done(void)
+void clean_up(void)
 {
     fclose(fcoords);
 }

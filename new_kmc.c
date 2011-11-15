@@ -14,8 +14,6 @@ void add_pvp_en(int site);
 void rm_pvp_en(int site);
 void update_energy(int site);
 void check(void);
-int is_on_face(int site);
-int is_crystal_id(int x, int y, int z);
 
 extern int m;
 extern int Nsites;
@@ -31,7 +29,7 @@ extern int npvp;
 extern gsl_rng *rng;
 
 // default values
-double T = 0.036;
+double T = 0.0375;
 double V = 1e34;
 int radius = 4;
 int tot_crystals = 2000;
@@ -42,6 +40,7 @@ int max_crystals_drawn, max_pvps_drawn;
 double e8 = 2.6;
 double e9 = 2.7;
 double b100 = 0.5;
+char *efile = "energyfile";
 
 double energy[13], energy_diff[13];
 double penergy[13], penergy_diff[13];
@@ -72,6 +71,8 @@ int main(int argc, char **argv)
                 nsteps = atoi(arg);
             else if (flag_match(flag, 1, "r"))
                 radius = atoi(arg);
+            else if (flag_match(flag, 1, "e"))
+                efile = arg;
             else if (flag_match(flag, 1, "t"))
                 tot_crystals = atoi(arg);
             else if (flag_match(flag, 1, "tp"))
@@ -82,10 +83,6 @@ int main(int argc, char **argv)
                 max_pvps_drawn = atoi(arg);
             else if (flag_match(flag, 1, "i"))
                 interval = atoi(arg);
-            else if (flag_match(flag, 1, "e8"))
-                e8 = atof(arg);
-            else if (flag_match(flag, 1, "e9"))
-                e9 = atof(arg);
             else if (flag_match(flag, 1, "b100"))
                 b100 = atof(arg);
         }
@@ -102,6 +99,7 @@ int main(int argc, char **argv)
     printf("    Temperature (-T): %.4lf\n", T);
     printf("    Volume (-V): %.4le\n", V);
     printf("    Seed radius (-r): %d\n", radius);
+    printf("    Energy file (-e): %s\n", efile);
     printf("    Max crystals (-t): %d\n", tot_crystals);
     printf("    Max pvp (-tp): %d\n", tot_pvp);
     printf("    Max crystals drawn (-dm): %d\n", max_crystals_drawn);
@@ -259,7 +257,16 @@ void grow(void)
 void init(void)
 {
     int i;
+    FILE *fp;
+    char line[20], type[20], coord[20], value[20];
 
+    if ((fp = fopen(efile, "r")) == NULL)
+    {
+        printf("Cannot read file %s.\n", efile);
+        exit(1);
+    }
+
+    // default energy scale
     energy[0] = 0;
     energy[1] = 1.2;
     energy[2] = 2.0;
@@ -268,15 +275,11 @@ void init(void)
     energy[5] = 2.3;
     energy[6] = 2.4;
     energy[7] = 2.5;
-    energy[8] = e8;
-    energy[9] = e9;
+    energy[8] = 2.6;
+    energy[9] = 2.7;
     energy[10] = 2.8;
     energy[11] = 2.9;
     energy[12] = 3.0;
-
-    energy_diff[0] = 0;
-    for (i = 1; i < 13; i++)
-        energy_diff[i] = energy[i] - energy[i-1];
 
     penergy[0] = 0;
     penergy[1] = 0;
@@ -291,6 +294,22 @@ void init(void)
     penergy[10] = 0;
     penergy[11] = 0;
     penergy[12] = 0;
+
+    while (fgets(line, 20, fp))
+    {
+        if (line[0] == '#')
+            continue;
+
+        if (sscanf(line, "%[^0-9]%2[0-9]\t%s", type, coord, value) == 3)
+            if (type[0] == 'e')
+                    energy[atoi(coord)] = atof(value);
+            else if (type[0] == 'p')
+                penergy[atoi(coord)] = atof(value);
+    }
+
+    energy_diff[0] = 0;
+    for (i = 1; i < 13; i++)
+        energy_diff[i] = energy[i] - energy[i-1];
 
     penergy_diff[0] = 0;
     for (i = 1; i < 13; i++)
@@ -353,7 +372,7 @@ void update_energy(int site)
     for (i = 0; i < cell_list_size; i++)
         for (j = cell_list[i]*4; j < cell_list[i]*4+4; j++)
         {
-            lattice[j].energy = lattice[j].bonus_energy = 0;
+            lattice[j].energy = 0;
             lattice[j].rate = 1;
 
             if (is_crystal(j))
@@ -374,7 +393,7 @@ void update_energy(int site)
                         lattice[j].energy += penergy_diff[lattice[neigh].neighbors];
                 }
 
-                lattice[j].rate = exp(-(lattice[j].energy + lattice[j].bonus_energy)/T);
+                lattice[j].rate = exp(-lattice[j].energy/T);
             }
             // else if (is_pvp(j) && lattice[j].neighbors <= 6 && is_on_face(j))
             // {
@@ -391,50 +410,4 @@ void update_energy(int site)
                 lattice[j].rate = exp(-lattice[j].energy/T);
             }
         }
-}
-
-int is_on_face(int site)
-{
-    int x = lattice[site].pos[0];
-    int y = lattice[site].pos[1];
-    int z = lattice[site].pos[2];
-
-    // check bottom 4 sites
-    if (x != 0 && x != 2*m-1 && y != 0 && y != 2*m-1 && z != 0)
-        if (is_crystal_id(x-1,y,z-1) && is_crystal_id(x,y-1,z-1) && is_crystal_id(x+1,y,z-1) && is_crystal_id(x,y+1,z-1))
-            return 1;
-
-    // check left 4 sites
-    if (x != 0 && y != 0 && y != 2*m-1 && z != 0 && z != 2*m-1)
-        if (is_crystal_id(x-1,y-1,z) && is_crystal_id(x-1,y,z-1) && is_crystal_id(x-1,y,z+1) && is_crystal_id(x-1,y+1,z))
-            return 1;
-
-    // check top 4 sites
-    if (x != 0 && x != 2*m-1 && y != 0 && y != 2*m-1 && z != 2*m-1)
-        if (is_crystal_id(x-1,y,z+1) && is_crystal_id(x,y-1,z+1) && is_crystal_id(x,y+1,z+1) && is_crystal_id(x+1,y,z+1))
-            return 1;
-
-    // check right 4 sites
-    if (x != 2*m-1 && y != 0 && y != 2*m-1 && z != 0 && z != 2*m-1)
-        if (is_crystal_id(x+1,y-1,z) && is_crystal_id(x+1,y,z-1) && is_crystal_id(x+1,y,z+1) && is_crystal_id(x+1,y+1,z))
-            return 1;
-
-    // check front 4 sites
-    if (x != 0 && x != 2*m-1 && y != 0 && z != 0 && z != 2*m-1)
-        if (is_crystal_id(x-1,y-1,z) && is_crystal_id(x,y-1,z-1) && is_crystal_id(x,y-1,z+1) && is_crystal_id(x+1,y-1,z))
-            return 1;
-
-    // check back 4 sites
-    if (x != 0 && x != 2*m-1 && y != 2*m-1 && z != 0 && z != 2*m-1)
-        if (is_crystal_id(x-1,y+1,z) && is_crystal_id(x,y+1,z-1) && is_crystal_id(x+1,y+1,z) && is_crystal_id(x,y+1,z+1))
-            return 1;
-
-    return 0;
-}
-
-int is_crystal_id(int x, int y, int z)
-{
-    extern int ***id;
-
-    return is_crystal(id[x][y][z]);
 }

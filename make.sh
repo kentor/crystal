@@ -1,2 +1,2 @@
 #!/bin/sh
-gcc new_kmc_pvp.c new_lattice.c flags.c -o kmc_p.o
+gcc new_kmc.c new_lattice.c auxilary.c -o kmc.o
