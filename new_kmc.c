@@ -37,8 +37,6 @@ int tot_pvp = 200;
 int nsteps = 1000000;
 int interval = 1000;
 int max_crystals_drawn, max_pvps_drawn;
-double e8 = 2.6;
-double e9 = 2.7;
 double b100 = 0.5;
 char *efile = "energyfile";
 
@@ -111,12 +109,12 @@ int main(int argc, char **argv)
     printf("  Energy scale:\n");
     for (i = 0; i < 13; i++)
         printf("    energy[%d]: %.2lf\n", i, energy[i]);
-    printf("\n\n");
+    printf("\n");
 
     printf("  PVP energy scale:\n");
     for (i = 0; i < 13; i++)
         printf("    penergy[%d]: %.2lf\n", i, penergy[i]);
-    printf("\n\n");
+    printf("\n");
 
     printf("    PVP (100) bonus (-b100): %.2lf\n", b100);
     printf("\n\n");
@@ -297,8 +295,7 @@ void init(void)
 
     while (fgets(line, 20, fp))
     {
-        if (line[0] == '#')
-            continue;
+        if (line[0] == '#') continue;
 
         if (sscanf(line, "%[^0-9]%2[0-9]\t%s", type, coord, value) == 3)
             if (type[0] == 'e')
