@@ -259,10 +259,7 @@ void init(void)
     char line[20], type[20], coord[20], value[20];
 
     if ((fp = fopen(efile, "r")) == NULL)
-    {
-        printf("Cannot read file %s.\n", efile);
-        exit(1);
-    }
+        printf("Cannot read file %s, using default energy scale.\n", efile);
 
     // default energy scale
     energy[0] = 0;
