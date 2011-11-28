@@ -13,7 +13,7 @@ void rm_crystal_en(int site);
 void add_pvp_en(int site);
 void rm_pvp_en(int site);
 void update_energy(int site);
-void check(void);
+void debug(void);
 
 extern int m;
 extern int Nsites;
@@ -85,9 +85,9 @@ int main(int argc, char **argv)
                 b100 = atof(arg);
         }
 
-    if (max_crystals_drawn == 0)
+    if (max_crystals_drawn == 0 || max_crystals_drawn > tot_crystals)
         max_crystals_drawn = tot_crystals;
-    if (max_pvps_drawn == 0)
+    if (max_pvps_drawn == 0 || max_pvps_drawn > tot_pvp)
         max_pvps_drawn = tot_pvp;
 
     // init seed and energy scale
@@ -130,6 +130,7 @@ int main(int argc, char **argv)
         {
             print_progress(n, nsteps);
             draw(max_crystals_drawn, max_pvps_drawn);
+            debug();
         }
     }
 
@@ -139,13 +140,14 @@ int main(int argc, char **argv)
     printf("PVPs adsorbed: %d, pvps floating: %d\n", npvp, tot_pvp - npvp);
 }
 
-void check(void)
+void debug(void)
 {
     check_lattice();
 
     int i, j;
 
     for (i = 0; i < Nsites; i++)
+    {
         if (is_crystal(i))
         {
             double en = energy[lattice[i].neighbors];
@@ -154,13 +156,23 @@ void check(void)
             {
                 int neigh = lattice[i].nn[j];
 
-                if (neigh == EMPTY || !is_crystal(neigh)) continue;
-
-                en += energy_diff[lattice[neigh].neighbors];
+                if (neigh == -1) continue;
+                
+                if (is_crystal(neigh))
+                    en += energy_diff[lattice[neigh].neighbors];
+                else if (is_pvp(neigh))
+                    en += penergy_diff[lattice[neigh].neighbors];
             }
 
             assert(en == lattice[i].energy);
         }
+        else if (is_pvp(i))
+        {
+            double en = penergy[lattice[i].neighbors];
+
+            assert(en == lattice[i].energy);
+        }
+    }
 }
 
 void seed_crystal(int radius)
