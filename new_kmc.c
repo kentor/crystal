@@ -130,7 +130,6 @@ int main(int argc, char **argv)
         {
             print_progress(n, nsteps);
             draw(max_crystals_drawn, max_pvps_drawn);
-            debug();
         }
     }
 
@@ -157,7 +156,7 @@ void debug(void)
                 int neigh = lattice[i].nn[j];
 
                 if (neigh == -1) continue;
-                
+
                 if (is_crystal(neigh))
                     en += energy_diff[lattice[neigh].neighbors];
                 else if (is_pvp(neigh))
@@ -171,6 +170,14 @@ void debug(void)
             double en = penergy[lattice[i].neighbors];
 
             assert(en == lattice[i].energy);
+        }
+        else if (is_surface_site(i))
+        {
+            assert(lattice[i].neighbors > 0);
+        }
+        else if (is_vacuum(i))
+        {
+            assert(lattice[i].neighbors == 0);
         }
     }
 }
