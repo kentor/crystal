@@ -155,7 +155,7 @@ void debug(void)
             {
                 int neigh = lattice[i].nn[j];
 
-                if (neigh == -1) continue;
+                if (neigh == EMPTY) continue;
 
                 if (is_crystal(neigh))
                     en += energy_diff[lattice[neigh].neighbors];
