@@ -26,6 +26,8 @@ int is_crystal_by_id(int x, int y, int z);
 
 void add_to_sc_ll(int site);
 void rm_from_sc_ll(int site);
+void add_to_bulk_ll(int site);
+void rm_from_bulk_ll(int site);
 void add_to_ss_ll(int site);
 void rm_from_ss_ll(int site);
 void add_to_pvp_ll(int site);
@@ -51,9 +53,11 @@ int center[3];              // coord of crystal seed center
 int *ll;
 int ***id;
 int crystals_hoc = EMPTY;
+int bulk_hoc = EMPTY;
 int sites_hoc = EMPTY;
 int pvp_hoc = EMPTY;
 int ncrystals = 0;
+int nbulk = 0;
 int nsites = 0;
 int npvp = 0;
 
@@ -304,7 +308,11 @@ void add_crystal(int site)
     if (is_surface_site(site))
         rm_from_ss_ll(site);
 
-    add_to_sc_ll(site);
+    // if site is 12 neighbors, add to builk ll (12/22)
+    if (lattice[site].neighbors != 12)
+        add_to_sc_ll(site);
+    else
+        add_to_bulk_ll(site);
 
     lattice[site].state = CRYSTAL;
 
@@ -328,6 +336,13 @@ void add_crystal(int site)
             add_to_ss_ll(neigh);
             lattice[neigh].state = SURFACE_SITE;
         }
+
+        // if neighbor became bulk, remove neighbor from sc and add to bulk (12/22)
+        if (lattice[neigh].neighbors == 12)
+        {
+            rm_from_sc_ll(neigh);
+            add_to_bulk_ll(neigh);
+        }
     }
 }
 
@@ -337,7 +352,11 @@ void rm_crystal(int site)
     
     assert(is_crystal(site));
 
-    rm_from_sc_ll(site);
+    // if site has 12 neighbors, remove from bulk ll instead (12/22)
+    if (lattice[site].neighbors != 12)
+        rm_from_sc_ll(site);
+    else
+        rm_from_bulk_ll(site);
 
     if (lattice[site].neighbors == 0)
         lattice[site].state = VACUUM;
@@ -358,6 +377,13 @@ void rm_crystal(int site)
         {
             rm_from_ss_ll(neigh);
             lattice[neigh].state = VACUUM;
+        }
+
+        // if neighbor was a bulk, add back to sc ll (12/22)
+        if (lattice[neigh].neighbors == 11)
+        {
+            rm_from_bulk_ll(neigh);
+            add_to_sc_ll(neigh);
         }
     }
 }
@@ -498,6 +524,29 @@ void rm_from_sc_ll(int site)
     ncrystals--;
 }
 
+// (12/22)
+void add_to_bulk_ll(int site)
+{
+    ll[site] = bulk_hoc;
+    bulk_hoc = site;
+    nbulk++;
+}
+
+// (12/22)
+void rm_from_bulk_ll(int site)
+{
+    int i = bulk_hoc;
+
+    if (i == site)
+        bulk_hoc = ll[site];
+    else while (ll[i] != site)
+        i = ll[i];
+
+    ll[i] = ll[site];
+    ll[site] = EMPTY;
+    nbulk--;
+}
+
 void add_to_ss_ll(int site)
 {
     ll[site] = sites_hoc;
@@ -574,25 +623,24 @@ void check_lattice(void)
 
 void draw(int max_crystals, int max_pvp)
 {
-    int i, j;
+    int i, j, k;
     int count;
 
     if (bdraw)
     {
         fprintf(fcoords, "%d\n\n", max_crystals+max_pvp);
 
-        for (i = 0, count = 0; i < Nsites; i++)
-            if (is_crystal(i) && lattice[i].neighbors != 12)
-            {
-                fprintf(fcoords, "C");
-                for (j = 0; j < 3; j++)
-                    fprintf(fcoords, " %d", lattice[i].pos[j]);
-                fprintf(fcoords, "\n");
-                count++;
+        for (i = crystals_hoc, count = 0; i != EMPTY; i = ll[i])
+        {
+            fprintf(fcoords, "C");
+            for (j = 0; j < 3; j++)
+                fprintf(fcoords, " %d", lattice[i].pos[j]);
+            fprintf(fcoords, "\n");
+            count++;
 
-                if (count == max_crystals)
-                    break;
-            }
+            if (count == max_crystals)
+                break;
+        }
 
         // then stick the rest at the reservoir
         for (i = 0; i < max_crystals - count; i++)
@@ -604,16 +652,13 @@ void draw(int max_crystals, int max_pvp)
         }
 
         // draw pvps
-        for (i = 0, count = 0; i < Nsites; i++)
+        for (i = pvp_hoc, count = 0; i != EMPTY; i = ll[i])
         {
-            if (is_pvp(i))
-            {
-                fprintf(fcoords, "F");
-                for (j = 0; j < 3; j++)
-                    fprintf(fcoords, " %d", lattice[i].pos[j]);
-                fprintf(fcoords, "\n");
-                count++;
-            }
+            fprintf(fcoords, "F");
+            for (j = 0; j < 3; j++)
+                fprintf(fcoords, " %d", lattice[i].pos[j]);
+            fprintf(fcoords, "\n");
+            count++;
         }
 
         for (i = 0; i < max_pvp - count; i++)

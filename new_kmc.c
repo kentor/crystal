@@ -50,10 +50,6 @@ int main(int argc, char **argv)
     // initiate lattice / memory allocation
     init_lattice(argc, argv);
 
-    // init random number generator
-    rng = gsl_rng_alloc(gsl_rng_mt19937);
-    gsl_rng_set(rng, time(0));
-
     // override defaults
     for (i = 1; i < argc; i++)
         if (argv[i][0] == '-')
