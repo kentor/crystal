@@ -24,6 +24,7 @@ extern int crystals_hoc;
 extern int sites_hoc;
 extern int pvp_hoc;
 extern int ncrystals;
+extern int nbulk;
 extern int nsites;
 extern int npvp;
 extern gsl_rng *rng;
@@ -131,7 +132,7 @@ int main(int argc, char **argv)
 
     printf("\n\n");
 
-    printf("Crystals adsorbed: %d, crystals floating: %d\n", ncrystals, tot_crystals - ncrystals);
+    printf("Crystals adsorbed: %d, crystals floating: %d\n", ncrystals + nbulk, tot_crystals - ncrystals - nbulk);
     printf("PVPs adsorbed: %d, pvps floating: %d\n", npvp, tot_pvp - npvp);
 }
 
@@ -213,7 +214,7 @@ void grow(void)
     double r;
 
     // number of free crystals (total crystals - adsorbed crystals) divided by the volume
-    rate_add = (tot_crystals - ncrystals)/V;
+    rate_add = (tot_crystals - ncrystals - nbulk)/V;
     rate_add_pvp = (tot_pvp - npvp)/V;
 
     // first entry in partial sum is the rate of addition multiplied by number of sites

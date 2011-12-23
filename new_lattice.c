@@ -338,7 +338,7 @@ void add_crystal(int site)
         }
 
         // if neighbor became bulk, remove neighbor from sc and add to bulk (12/22)
-        if (lattice[neigh].neighbors == 12)
+        if (is_crystal(neigh) && lattice[neigh].neighbors == 12)
         {
             rm_from_sc_ll(neigh);
             add_to_bulk_ll(neigh);
@@ -380,7 +380,7 @@ void rm_crystal(int site)
         }
 
         // if neighbor was a bulk, add back to sc ll (12/22)
-        if (lattice[neigh].neighbors == 11)
+        if (is_crystal(neigh) && lattice[neigh].neighbors == 11)
         {
             rm_from_bulk_ll(neigh);
             add_to_sc_ll(neigh);
