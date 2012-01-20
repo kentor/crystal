@@ -22,24 +22,29 @@ typedef struct site {
 typedef struct lattice {
    int m;
    int nsites;
-   site site[];
+   set *surface_silver;
+   set *bulk_silver;
+   set *surfaces;
+   site *site;
 } lattice;
 
-lattice *lattice_new(int _m);
+lattice lattice_new(int _m);
 void lattice_free(lattice *lat);
+void add_silver(site *site);
 int find_id_by_pos(int _x, int _y, int _z, int m);
 void run_unit_tests(void);
 
-lattice *lattice_new(int _m)
+lattice lattice_new(int _m)
 {
    int _nsites = 4*_m*_m*_m;
-   lattice *lat = malloc(sizeof(lattice) + _nsites*sizeof(site));
-   lat->m = _m;
-   lat->nsites = _nsites;
+   lattice lat;
+   lat.site = malloc(_nsites*sizeof(site));
+   lat.m = _m;
+   lat.nsites = _nsites;
 
    for (int id = 0; id < _nsites; id++) {
-      lat->site[id].id = id;
-      lat->site[id].rate = 1.0;
+      lat.site[id].id = id;
+      lat.site[id].rate = 1.0;
    }
 
    for (int n = 0; n < _nsites; n += 4) {
@@ -48,27 +53,27 @@ lattice *lattice_new(int _m)
       y = r / _m; x = r % _m;
 
       for (int i = 0; i < 4; i++) {
-         lat->site[n+i].pos[0] = 2*x;
-         lat->site[n+i].pos[1] = 2*y;
-         lat->site[n+i].pos[2] = 2*z;
+         lat.site[n+i].pos[0] = 2*x;
+         lat.site[n+i].pos[1] = 2*y;
+         lat.site[n+i].pos[2] = 2*z;
       }
 
-      lat->site[n+1].pos[0] += 1; lat->site[n+1].pos[1] += 1;
-      lat->site[n+2].pos[0] += 1; lat->site[n+2].pos[2] += 1;
-      lat->site[n+3].pos[1] += 1; lat->site[n+3].pos[2] += 1;
+      lat.site[n+1].pos[0] += 1; lat.site[n+1].pos[1] += 1;
+      lat.site[n+2].pos[0] += 1; lat.site[n+2].pos[2] += 1;
+      lat.site[n+3].pos[1] += 1; lat.site[n+3].pos[2] += 1;
    }
 
    for (int n = 0; n < _nsites; n++) {
       int x, y, z;
-      x = lat->site[n].pos[0]; y = lat->site[n].pos[1]; z = lat->site[n].pos[2];
+      x = lat.site[n].pos[0]; y = lat.site[n].pos[1]; z = lat.site[n].pos[2];
 
       #ifndef make_neighbors_of
       #define make_neighbors_of(id1, _x, _y, _z, _m) \
       do { \
          int id2 = find_id_by_pos((_x), (_y), (_z), (_m)); \
          if (id2 != -1) { \
-            lat->site[id1].nn[lat->site[id1].nn_count++] = &lat->site[id2]; \
-            lat->site[id2].nn[lat->site[id2].nn_count++] = &lat->site[id1]; \
+            lat.site[id1].nn[lat.site[id1].nn_count++] = &lat.site[id2]; \
+            lat.site[id2].nn[lat.site[id2].nn_count++] = &lat.site[id1]; \
          } \
       } while (0)
       #endif
@@ -84,14 +89,25 @@ lattice *lattice_new(int _m)
    return lat;
 }
 
-void lattice_free(lattice *lat)
-{
-   free(lat);
-}
+// void lattice_free(lattice *lat)
+// {
+//    free(lat);
+// }
 
-void add_silver(site *s)
+void add_silver(site *site)
 {
-   s->state = _silver;
+   if (site->state == _silver) {
+      return;
+   }
+
+   site->state = _silver;
+
+   for (int n = 0; n < site->nn_count; n++) {
+      if (site->nn[n]->state == _vacuum) {
+         site->nn[n]->state = _surface;
+      }
+      site->nn[n]->neighbors++;
+   }
 }
 
 int find_id_by_pos(int _x, int _y, int _z, int m)
@@ -152,49 +168,68 @@ void run_unit_tests(void)
    }
 
    describe_lattice_new: {
-      lattice *lat2 = lattice_new(2);
-      lattice *lat30 = lattice_new(30);
+      lattice lat2 = lattice_new(2);
+      lattice lat30 = lattice_new(30);
 
       it_should_have_correct_m_and_nsites: {
-         assert(lat2->m == 2);
-         assert(lat2->nsites == 32);
-         assert(lat30->m == 30);
-         assert(lat30->nsites == 108000);
+         assert(lat2.m == 2);
+         assert(lat2.nsites == 32);
+         assert(lat30.m == 30);
+         assert(lat30.nsites == 108000);
          puts(".");
       }
 
       it_should_create_nsites_site_objects: {
-         for (int i = 0; i < lat2->nsites; i++) {
-            assert(lat2->site[i].id == i);
+         for (int i = 0; i < lat2.nsites; i++) {
+            assert(lat2.site[i].id == i);
          }
-         for (int i = 0; i < lat30->nsites; i++) {
-            assert(lat30->site[i].id == i);
+         for (int i = 0; i < lat30.nsites; i++) {
+            assert(lat30.site[i].id == i);
          }
          puts(".");
       }
 
       it_should_determine_position_of_sites: {
-         assert(find_id_by_pos(lat2->site[28].pos[0], lat2->site[28].pos[1],
-            lat2->site[28].pos[2], 2) == 28);
-         assert(find_id_by_pos(lat30->site[54346].pos[0], lat30->site[54346].pos[1],
-            lat30->site[54346].pos[2], 30) == 54346);
+         assert(find_id_by_pos(lat2.site[28].pos[0], lat2.site[28].pos[1],
+            lat2.site[28].pos[2], 2) == 28);
+         assert(find_id_by_pos(lat30.site[54346].pos[0], lat30.site[54346].pos[1],
+            lat30.site[54346].pos[2], 30) == 54346);
          puts(".");
       }
 
       it_should_determine_neighbor_count_for_sites: {
-         assert(lat2->site[0].nn_count == 3);
-         assert(lat2->site[28].nn_count == 12);
+         assert(lat2.site[0].nn_count == 3);
+         assert(lat2.site[28].nn_count == 12);
          puts(".");
       }
 
       it_should_make_correct_neighbors_of_sites: {
-         assert(lat2->site[0].nn[0] == &lat2->site[1]);
-         assert(lat2->site[1].nn[0] == &lat2->site[0]);
-         assert(lat2->site[0].nn[4] == NULL);
+         assert(lat2.site[0].nn[0] == &lat2.site[1]);
+         assert(lat2.site[1].nn[0] == &lat2.site[0]);
+         assert(lat2.site[0].nn[4] == NULL);
+         puts(".");
+      }
+   }
+
+   describe_add_silver: {
+      lattice lat = lattice_new(2);
+
+      it_should_make_site_into_silver_and_neighbor_into_surface: {
+         assert(lat.site[0].state == _vacuum);
+         assert(lat.site[1].state == _vacuum);
+         add_silver(&lat.site[0]);
+         assert(lat.site[0].state == _silver);
+         assert(lat.site[1].state == _surface);
          puts(".");
       }
 
-      lattice_free(lat2);
-      lattice_free(lat30);
+      it_should_increase_silver_neighbor_count_of_neighbors: {
+         for (int i = 0; i < lat.site[0].nn_count; i++) {
+            assert(lat.site[0].nn[i]->neighbors == 1);
+         }
+         add_silver(&lat.site[2]);
+         assert(lat.site[1].neighbors == 2);
+         puts(".");
+      }
    }
 }
