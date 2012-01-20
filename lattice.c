@@ -151,10 +151,11 @@ void run_unit_tests(void)
          assert(find_id_by_pos(1,0,1,30) == 2);
          assert(find_id_by_pos(0,1,1,30) == 3);
          assert(find_id_by_pos(0,2,0,30) == 120);
-         assert(find_id_by_pos(58,58,58,30)== 107996);
-         assert(find_id_by_pos(59,59,58,30)== 107997);
-         assert(find_id_by_pos(59,58,59,30)== 107998);
-         assert(find_id_by_pos(58,59,59,30)== 107999);
+         assert(find_id_by_pos(0,0,2,30) == 3600);
+         assert(find_id_by_pos(58,58,58,30) == 107996);
+         assert(find_id_by_pos(59,59,58,30) == 107997);
+         assert(find_id_by_pos(59,58,59,30) == 107998);
+         assert(find_id_by_pos(58,59,59,30) == 107999);
          puts(".");
       }
 
@@ -212,18 +213,28 @@ void run_unit_tests(void)
    }
 
    describe_add_silver: {
-      lattice lat = lattice_new(2);
+      it_should_make_site_into_silver_and_neighbors_into_surface: {
+         lattice lat = lattice_new(2);
 
-      it_should_make_site_into_silver_and_neighbor_into_surface: {
          assert(lat.site[0].state == _vacuum);
-         assert(lat.site[1].state == _vacuum);
+         for (int i = 0; i < lat.site[0].nn_count; i++) {
+            assert(lat.site[0].nn[i]->state == _vacuum);
+         }
+
          add_silver(&lat.site[0]);
+
          assert(lat.site[0].state == _silver);
-         assert(lat.site[1].state == _surface);
+         for (int i = 0; i < lat.site[0].nn_count; i++) {
+            assert(lat.site[0].nn[i]->state == _surface);
+         }
          puts(".");
       }
 
       it_should_increase_silver_neighbor_count_of_neighbors: {
+         lattice lat = lattice_new(2);
+
+         add_silver(&lat.site[0]);
+         assert(lat.site[0].neighbors == 0);
          for (int i = 0; i < lat.site[0].nn_count; i++) {
             assert(lat.site[0].nn[i]->neighbors == 1);
          }
