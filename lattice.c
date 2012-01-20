@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <assert.h>
 #include <time.h>
-#include <gsl/gsl_rng.h>
 #include "parse_arg.h"
 #include "set.c"
 
@@ -22,20 +22,22 @@ typedef struct site {
    int nn_count;
 } site;
 
+typedef struct lattice {
+   int m;
+   site site[];
+} lattice;
+
 void lattice_initialize(int argc, char **argv);
 int find_id_by_pos(int _x, int _y, int _z, int m);
+void run_unit_tests(void);
 
 int _m = 2, _nsites, _seed;
 site *lat;
 char *_file = "movie.xyz";
 bool _draw;
-gsl_rng *_rng;
 
 void lattice_initialize(int argc, char **argv)
 {
-   _seed = time(NULL);
-   _rng  = gsl_rng_alloc(gsl_rng_mt19937);
-
    for (int i = 1; i < argc; i++) {
       if (argv[i][0] == '-') {
          char *flag = argv[i] + 1;
@@ -43,12 +45,10 @@ void lattice_initialize(int argc, char **argv)
          parse_arg(flag, "m", _m, atoi(arg));
          parse_arg(flag, "d", _draw, !_draw);
          parse_arg(flag, "o", _file, strdup(arg));
-         parse_arg(flag, "se", _seed, atoi(arg));
       }
    }
 
    _nsites = 4*_m*_m*_m;
-   gsl_rng_set(_rng, _seed);
 
    lat = malloc(_nsites*sizeof(site));
    for (int id = 0; id < _nsites; id++) {
@@ -58,7 +58,6 @@ void lattice_initialize(int argc, char **argv)
 
    for (int n = 0; n < _nsites; n += 4) {
       int x, y, z, r;
-
       z = (n/4) / (_m*_m); r = (n/4) % (_m*_m);
       y = r / _m; x = r % _m;
 
@@ -95,15 +94,12 @@ void lattice_initialize(int argc, char **argv)
       make_neighbors_of(n, x  , y+1, z+1, _m);
       make_neighbors_of(n, x  , y+1, z-1, _m);
    }
-
-   // for (int n = 0; n < 32; n++) {
-   //    printf("{ :id => %02d, :nn => [%02d,%02d,%02d] }\n", n, lat[n].nn[0]->id, lat[n].nn[1]->id, lat[n].nn[2]->id);
-   // }
 }
 
 int main(int argc, char **argv)
 {
-   lattice_initialize(argc, argv);
+   run_unit_tests();
+   // lattice_initialize(argc, argv);
 }
 
 int find_id_by_pos(int _x, int _y, int _z, int m)
@@ -112,12 +108,52 @@ int find_id_by_pos(int _x, int _y, int _z, int m)
       return -1;
    }
 
-   int x, y, z, yr, zr, id;
+   int x, y, z, yr, zr;
    x = _x / 2;
    y = _y / 2; yr = _y % 2;
    z = _z / 2; zr = _z % 2;
 
-   id  = 4*(x + y*m + z*m*m);
-   id += zr ? (yr ? 3 : 2) : (yr ? 1 : 0);
-   return id;
+   return 4*(x + y*m + z*m*m) + (zr ? (yr ? 3 : 2) : (yr ? 1 : 0));
+}
+
+void run_unit_tests(void)
+{
+   describe_find_id_by_pos: {
+      it_should_return_id_when_given_pos_and_m: {
+         assert(find_id_by_pos(0,0,0,2) == 0);
+         assert(find_id_by_pos(1,1,0,2) == 1);
+         assert(find_id_by_pos(1,0,1,2) == 2);
+         assert(find_id_by_pos(0,1,1,2) == 3);
+         assert(find_id_by_pos(2,0,0,2) == 4);
+         assert(find_id_by_pos(3,1,0,2) == 5);
+         assert(find_id_by_pos(3,0,1,2) == 6);
+         assert(find_id_by_pos(2,1,1,2) == 7);
+         assert(find_id_by_pos(0,2,0,2) == 8);
+         assert(find_id_by_pos(2,2,0,2) == 12);
+         assert(find_id_by_pos(0,0,2,2) == 16);
+         assert(find_id_by_pos(2,0,2,2) == 20);
+         assert(find_id_by_pos(2,2,2,2) == 28);
+
+         assert(find_id_by_pos(0,0,0,30) == 0);
+         assert(find_id_by_pos(1,1,0,30) == 1);
+         assert(find_id_by_pos(1,0,1,30) == 2);
+         assert(find_id_by_pos(0,1,1,30) == 3);
+         assert(find_id_by_pos(0,2,0,30)== 120);
+         assert(find_id_by_pos(58,58,58,30)== 107996);
+         assert(find_id_by_pos(59,59,58,30)== 107997);
+         assert(find_id_by_pos(59,58,59,30)== 107998);
+         assert(find_id_by_pos(58,59,59,30)== 107999);
+
+         puts(".");
+      }
+
+      it_should_return_neg_1_when_given_oob_pos: {
+         assert(find_id_by_pos(-1,0,0,2) == -1); 
+         assert(find_id_by_pos(4,0,0,2) == -1); 
+         assert(find_id_by_pos(0,-1,0,30) == -1); 
+         assert(find_id_by_pos(0,0,60,30) == -1); 
+
+         puts(".");
+      }
+   }
 }
