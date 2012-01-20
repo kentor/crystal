@@ -21,4 +21,3 @@ typedef struct lattice {
 
 lattice lattice_new(int _m);
 int find_id_by_pos(int _x, int _y, int _z, int m);
-void run_unit_tests(void);

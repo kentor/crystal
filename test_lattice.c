@@ -4,7 +4,7 @@
 
 int main()
 {
-	describe_find_id_by_pos: {
+   describe_find_id_by_pos: {
       it_should_return_id_when_given_pos_and_m: {
          assert(find_id_by_pos(0,0,0,2) == 0);
          assert(find_id_by_pos(1,1,0,2) == 1);
