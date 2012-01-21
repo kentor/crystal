@@ -31,7 +31,7 @@ void set_delete(set *s, int value)
    }
 }
 
-bool set_include(set *s, int value)
+bool set_include(const set *s, int value)
 {
    if (value < 0 || value > s->max_value) {
       return false;
@@ -39,12 +39,12 @@ bool set_include(set *s, int value)
    return s->table[value];
 }
 
-int set_size(set *s)
+int set_size(const set *s)
 {
    return s->size;
 }
 
-set_enum *set_to_enum(set *s)
+set_enum *set_to_enum(const set *s)
 {
    set_enum *s_enum = malloc(sizeof(set_enum));
    s_enum->set = s;
