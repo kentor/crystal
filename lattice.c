@@ -5,9 +5,9 @@ lattice new_lattice(int _m)
 {
    int _nsites = 4*_m*_m*_m;
    lattice lat;
-   lat.site = malloc(_nsites*sizeof(site));
    lat.m = _m;
    lat.nsites = _nsites;
+   lat.site = malloc(_nsites*sizeof(site));
 
    for (int _id = 0; _id < _nsites; _id++) {
       lat.site[_id].id = _id;
