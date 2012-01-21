@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include "lattice.h"
 
-lattice lattice_new(int _m)
+lattice new_lattice(int _m)
 {
    int _nsites = 4*_m*_m*_m;
    lattice lat;

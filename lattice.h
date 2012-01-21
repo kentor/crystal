@@ -19,5 +19,5 @@ typedef struct lattice {
    site *site;
 } lattice;
 
-lattice lattice_new(int _m);
+lattice new_lattice(int _m);
 int find_id_by_pos(int _x, int _y, int _z, int m);
