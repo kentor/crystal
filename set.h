@@ -10,7 +10,6 @@ typedef struct {
    const set *set;
    int index;
    int value;
-   int counter;
 } set_enum;
 
 set *new_set(int size);
@@ -21,4 +20,5 @@ int set_size(const set *s);
 
 set_enum *set_to_enum(const set *s);
 bool set_enum_next(set_enum *s_enum);
+void set_enum_rewind(set_enum *s_enum);
 void set_enum_free(set_enum *s_enum);

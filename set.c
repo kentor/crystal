@@ -50,14 +50,13 @@ set_enum *set_to_enum(const set *s)
    s_enum->set = s;
    s_enum->index = -1;
    s_enum->value = -1;
-   s_enum->counter = 0;
 
    return s_enum;
 }
 
 bool set_enum_next(set_enum *s_enum)
 {
-   if (s_enum->counter >= s_enum->set->size) {
+   if (s_enum->index >= s_enum->set->size - 1) {
       return false;
    }
 
@@ -66,10 +65,15 @@ bool set_enum_next(set_enum *s_enum)
    }
    while (!s_enum->set->table[s_enum->value]);
 
-   s_enum->counter++;
    s_enum->index++;
 
    return true;
+}
+
+void set_enum_rewind(set_enum *s_enum)
+{
+   s_enum->index = -1;
+   s_enum->value = -1;
 }
 
 void set_enum_free(set_enum *s_enum)

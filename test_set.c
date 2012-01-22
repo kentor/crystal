@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <assert.h>
-#include "set.h"
+#include "set.c"
 
 int main()
 {
@@ -106,8 +106,17 @@ int main()
             assert(silver_enum->index == silver_enum->set->size - 1);
             puts(".");
          }
+      }
 
-         set_enum_free(silver_enum);
+      describe_set_enum_rewind: {
+         it_should_rewind_enum_to_beginning: {
+            assert(set_enum_next(silver_enum) == false);
+            set_enum_rewind(silver_enum);
+            assert(set_enum_next(silver_enum) == true);
+            assert(silver_enum->value == 0);
+            assert(silver_enum->index == 0);
+            puts(".");
+         }
       }
    }
    return 0;
