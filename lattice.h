@@ -1,3 +1,8 @@
+#ifndef LATTICE_H
+#define LATTICE_H
+
+#define _site(ptr) ((site *)(ptr))
+
 typedef enum state {
    _vacuum, _silver, _surface, _pvp
 } state;
@@ -21,3 +26,5 @@ typedef struct lattice {
 
 lattice new_lattice(int m);
 int find_id_by_pos(int x, int y, int z, int m);
+
+#endif

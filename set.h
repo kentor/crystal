@@ -1,24 +1,18 @@
-#include <stdbool.h>
+#ifndef SET_H
+#define SET_H
+#include <glib.h>
 
-typedef struct {
-   int max_value;
-   int size;
-   bool table[];
-} set;
+#define set_new() g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL, NULL)
+#define set_insert(set, element) g_hash_table_insert(set, element, element)
+#define set_include(set, element) g_hash_table_lookup_extended(set, element, NULL, NULL)
+#define set_remove(set, element) g_hash_table_remove(set, element)
+#define set_size(set) g_hash_table_size(set)
+#define set_destroy(set) g_hash_table_destroy(set)
 
-typedef struct {
-   const set *set;
-   int index;
-   int value;
-} set_enum;
+#define set_iter_init(iter, set) g_hash_table_iter_init(&iter, set);
+#define set_iter_next(iter, key, value) g_hash_table_iter_next(&iter, &key, &value)
 
-set *new_set(int size);
-void set_insert(set *s, int value);
-void set_delete(set *s, int value);
-bool set_include(const set *s, int value);
-int set_size(const set *s);
+typedef GHashTable set;
+typedef GHashTableIter set_iter;
 
-set_enum *set_to_enum(const set *s);
-bool set_enum_next(set_enum *s_enum);
-void set_enum_rewind(set_enum *s_enum);
-void set_enum_free(set_enum *s_enum);
+#endif

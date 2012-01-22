@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <math.h>
+#include <time.h>
 #include <gsl/gsl_rng.h>
 #include "lattice.h"
 #include "set.h"
@@ -14,28 +16,26 @@ void add_pvp(site *site);
 void rm_pvp(site *site);
 
 void site_to_surface(site *site);
-void run_unit_tests(void);
 
 lattice lat;
 double _T = 0.0375;
 double _V = 1e34;
 int _rad = 4;
-int _nsilver = 2000;
+int _nslvr = 2000;
 int _npvp = 200;
 int _nsteps = 1000000;
 int _interval = 1000;
-bool _draw = true;
-gsl_rng *_rng;
 int _seed;
-set *total_silver_set, *silver_set, *surface_set, *pvp_set;
-double silver_energy[13] = { 0, 1, 1.5, 1.65, 1.8, 1.95, 2.1, 2.25, 2.4, 2.55, 2.7, 2.85, 3 };
-double pvp_energy[13] = { 0, 0, 2.4, 2.5, 2.6, 2.5, 2.4, 2, 0.5, 0, 0, 0, 0 };
+gsl_rng *_rng;
+set *ttl_slvr_tbl, *slvr_tbl, *surf_tbl, *pvp_tbl;
+bool _draw = true;
+double slvr_nrg[13] = { 0, 1, 1.5, 1.65, 1.8, 1.95, 2.1, 2.25, 2.4, 2.55, 2.7, 2.85, 3 };
+double pvp_nrg[13] = { 0, 0, 2.4, 2.5, 2.6, 2.5, 2.4, 2, 0.5, 0, 0, 0, 0 };
+double slvr_nrg_d[13] = { 0 }, pvp_nrg_d[13] = { 0 };
 
 int main(int argc, char **argv)
 {
-   _rng = gsl_rng_alloc(gsl_rng_mt19937);
-   gsl_rng_set(_rng, _seed);
-   run_unit_tests();
+
    // initialize_kmc(30);
    /*
    draw();
@@ -53,49 +53,44 @@ int main(int argc, char **argv)
 void kmc(void)
 {
    int index = 0;
-   double p_sum[2*set_size(surface_set)+set_size(silver_set)+set_size(pvp_set)];
-   site *obj_ary[2*set_size(surface_set)+set_size(silver_set)+set_size(pvp_set)];
+   int _size = 2*set_size(surf_tbl) + set_size(slvr_tbl) + set_size(pvp_tbl);
+   site *obj_ary[_size];
+   double p_sum[_size];
    double ktot = 0.0;
-   double rate_addition_silver = (_nsilver - set_size(total_silver_set)) / _V;
-   double rate_addition_pvp = (_npvp - set_size(pvp_set)) / _V;
-   set_enum *surface_set_enum = set_to_enum(surface_set);
-   set_enum *silver_set_enum = set_to_enum(silver_set);
-   set_enum *pvp_set_enum = set_to_enum(pvp_set);
+   double rate_addition_silver = (_nslvr - set_size(ttl_slvr_tbl)) / _V;
+   double rate_addition_pvp = (_npvp - set_size(pvp_tbl)) / _V;
 
-   #ifndef fill_partial_sum
-   #define fill_partial_sum(enumerator, rate) \
+   #ifndef fill_p_sum
+   #define fill_p_sum(table, rate) \
    do { \
-      while (set_enum_next(enumerator)) { \
-         int id = enumerator->value; \
+      set_iter iter; \
+      gpointer key, member; \
+      set_iter_init(iter, table) \
+      while (set_iter_next(iter, key, member)) { \
          p_sum[index++] = ktot += rate; \
-         obj_ary[index] = &lat.site[id]; \
+         obj_ary[index] = _site(member); \
       } \
    } while (0) 
    #endif
 
-   fill_partial_sum(surface_set_enum, rate_addition_silver);
-   set_enum_rewind(surface_set_enum);
+   fill_p_sum(surf_tbl, rate_addition_silver);
+   fill_p_sum(surf_tbl, rate_addition_pvp);
+   fill_p_sum(slvr_tbl, _site(member)->rate);
+   fill_p_sum(pvp_tbl, _site(member)->rate);
 
-   fill_partial_sum(surface_set_enum, rate_addition_pvp);
-   set_enum_free(surface_set_enum);
-
-   fill_partial_sum(silver_set_enum, lat.site[id].rate);
-   set_enum_free(silver_set_enum);
-   
-   fill_partial_sum(pvp_set_enum, lat.site[id].rate);
-   set_enum_free(pvp_set_enum);
+   if (_size != index) exit(0);
 
    double r = ktot * gsl_rng_uniform(_rng);
    for (int i = 0; i < index; i++) {
       if (r <= p_sum[i]) {
          int a = 0;
-         if (a <= i && i < (a += set_size(surface_set)))
+         if (a <= i && i < (a += set_size(surf_tbl)))
             add_silver(obj_ary[i]);
-         else if (a <= i && i < (a += set_size(surface_set)))
+         else if (a <= i && i < (a += set_size(surf_tbl)))
             add_pvp(obj_ary[i]);
-         else if (a <= i && i < (a += set_size(silver_set)))
+         else if (a <= i && i < (a += set_size(slvr_tbl)))
             rm_silver(obj_ary[i]);
-         else if (a <= i && i < (a += set_size(pvp_set)))
+         else if (a <= i && i < (a += set_size(pvp_tbl)))
             rm_pvp(obj_ary[i]);
          return;
       }
@@ -103,45 +98,48 @@ void kmc(void)
    exit(0);
 }
 
-// void draw(void)
-// {
-//    if (!_draw) return;
-// }
-
 void initialize_kmc(int m)
 {
    lat = new_lattice(m);
-   total_silver_set = new_set(lat.nsites);
-   silver_set = new_set(lat.nsites);
-   surface_set = new_set(lat.nsites);
-   pvp_set = new_set(lat.nsites);
+   ttl_slvr_tbl = set_new();
+   slvr_tbl = set_new();
+   surf_tbl = set_new();
+   pvp_tbl = set_new();
+
+   // _rng = gsl_rng_alloc(gsl_rng_mt19937);
+   // gsl_rng_set(_rng, _seed);
+
+   for (int i = 1; i < 13; i++) {
+      slvr_nrg_d[i] = slvr_nrg[i] - slvr_nrg[i-1];
+      pvp_nrg_d[i] = pvp_nrg[i] - pvp_nrg[i-1];
+   }
 }
 
 void destroy_kmc(void)
 {
-   free(total_silver_set);
-   free(silver_set);
-   free(surface_set);
-   free(pvp_set);
+   set_destroy(ttl_slvr_tbl);
+   set_destroy(slvr_tbl);
+   set_destroy(surf_tbl);
+   set_destroy(pvp_tbl);
 }
 
 void add_silver(site *site)
 {
    if (site->state != _surface) return;
-   set_delete(surface_set, site->id);
-   set_insert(total_silver_set, site->id);
+   set_remove(surf_tbl, site);
+   set_insert(ttl_slvr_tbl, site);
    if (site->neighbors < 11)
-      set_insert(silver_set, site->id);
+      set_insert(slvr_tbl, site);
    site->state = _silver;
 
    for (int i = 0; i < site->nn_count; i++) {
       site->nn[i]->neighbors++;
       if (site->nn[i]->state == _vacuum) {
-         set_insert(surface_set, site->nn[i]->id);
+         set_insert(surf_tbl, site->nn[i]);
          site->nn[i]->state = _surface;
       }
       else if (site->nn[i]->state == _silver && site->nn[i]->neighbors == site->nn[i]->nn_count) {
-         set_delete(silver_set, site->nn[i]->id);
+         set_remove(slvr_tbl, site->nn[i]);
       }
    }
 }
@@ -149,10 +147,10 @@ void add_silver(site *site)
 void rm_silver(site *site)
 {
    if (site->state != _silver) return;
-   set_delete(silver_set, site->id);
-   set_delete(total_silver_set, site->id);
+   set_remove(slvr_tbl, site);
+   set_remove(ttl_slvr_tbl, site);
    if (site->neighbors > 0) {
-      set_insert(surface_set, site->id);
+      set_insert(surf_tbl, site);
       site->state = _surface;
    }
    else {
@@ -162,11 +160,11 @@ void rm_silver(site *site)
    for (int i = 0; i < site->nn_count; i++) {
       site->nn[i]->neighbors--;
       if (site->nn[i]->state == _surface && site->nn[i]->neighbors == 0) {
-         set_delete(surface_set, site->nn[i]->id);
+         set_remove(surf_tbl, site->nn[i]);
          site->nn[i]->state = _vacuum;
       }
-      else if (site->nn[i]->state == _silver && !set_include(silver_set, site->nn[i]->id)) {
-         set_insert(silver_set, site->nn[i]->id);
+      else if (site->nn[i]->state == _silver && !set_include(slvr_tbl, site->nn[i])) {
+         set_insert(slvr_tbl, site->nn[i]);
       }
    }
 }
@@ -174,17 +172,17 @@ void rm_silver(site *site)
 void add_pvp(site *site)
 {
    if (site->state != _surface) return;
-   set_delete(surface_set, site->id);
-   set_insert(pvp_set, site->id);
+   set_remove(surf_tbl, site);
+   set_insert(pvp_tbl, site);
    site->state = _pvp;
 }
 
 void rm_pvp(site *site)
 {
    if (site->state != _pvp) return;
-   set_delete(pvp_set, site->id);
+   set_remove(pvp_tbl, site);
    if (site->neighbors > 0) {
-      set_insert(surface_set, site->id);
+      set_insert(surf_tbl, site);
       site->state = _surface;
    }
    else {
@@ -195,6 +193,19 @@ void rm_pvp(site *site)
 void site_to_surface(site *site)
 {
    if (site->state != _vacuum) return;
-   set_insert(surface_set, site->id);
+   set_insert(surf_tbl, site);
    site->state = _surface;
+}
+
+void update_nrg_around(site *site)
+{
+   set *nnn = set_new();
+
+   for (int L1 = 0; L1 < site->nn_count; L1++) {
+      for (int L2 = 0; L2 < site->nn[L1]->nn_count; L2++) {
+         if (site->nn[L1]->nn[L2]->state == _silver) {
+            set_insert(nnn, site->nn[L1]->nn[L2]);
+         }
+      }
+   }
 }
