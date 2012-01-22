@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include "lattice.h"
 
@@ -8,6 +9,16 @@ lattice new_lattice(int _m)
    lat.m = _m;
    lat.nsites = _nsites;
    lat.site = malloc(_nsites*sizeof(site));
+
+   for (int n = 0; n < _nsites; n++) {
+      lat.site[n].id = n;
+      lat.site[n].neighbors = 0;
+      lat.site[n].nn_count = 0;
+      lat.site[n].state = _vacuum;
+      lat.site[n].energy = 0.0;
+      lat.site[n].rate = 1.0;
+      for (int i = 0; i < 12; lat.site[n].nn[i++] = NULL);
+   }
 
    for (int n = 0; n < _nsites; n += 4) {
       int x, y, z, r;
@@ -26,9 +37,6 @@ lattice new_lattice(int _m)
    }
 
    for (int n = 0; n < _nsites; n++) {
-      lat.site[n].id = n;
-      lat.site[n].rate = 1.0;
-
       int x, y, z;
       x = lat.site[n].pos[0]; y = lat.site[n].pos[1]; z = lat.site[n].pos[2];
 
