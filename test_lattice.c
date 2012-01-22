@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <assert.h>
-#include "lattice.h"
+#include "lattice.c"
 
 int main()
 {

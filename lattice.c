@@ -9,11 +9,6 @@ lattice new_lattice(int _m)
    lat.nsites = _nsites;
    lat.site = malloc(_nsites*sizeof(site));
 
-   for (int _id = 0; _id < _nsites; _id++) {
-      lat.site[_id].id = _id;
-      lat.site[_id].rate = 1.0;
-   }
-
    for (int n = 0; n < _nsites; n += 4) {
       int x, y, z, r;
       z = (n/4) / (_m*_m); r = (n/4) % (_m*_m);
@@ -31,6 +26,9 @@ lattice new_lattice(int _m)
    }
 
    for (int n = 0; n < _nsites; n++) {
+      lat.site[n].id = n;
+      lat.site[n].rate = 1.0;
+
       int x, y, z;
       x = lat.site[n].pos[0]; y = lat.site[n].pos[1]; z = lat.site[n].pos[2];
 
@@ -58,9 +56,8 @@ lattice new_lattice(int _m)
 
 int find_id_by_pos(int _x, int _y, int _z, int m)
 {
-   if (_x < 0 || _x >= 2*m || _y < 0 || _y >= 2*m || _z < 0 || _z >= 2*m) {
+   if (_x < 0 || _x >= 2*m || _y < 0 || _y >= 2*m || _z < 0 || _z >= 2*m)
       return -1;
-   }
 
    int x, y, z, yr, zr;
    x = _x / 2;

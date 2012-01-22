@@ -1,15 +1,15 @@
 typedef enum state {
-   _vacuum, _silver, _surface
+   _vacuum, _silver, _surface, _pvp
 } state;
 
 typedef struct site {
    int id;
    int pos[3];
    int neighbors;
+   int nn_count;
    state state;
    double energy;
    double rate;
-   int nn_count;
    struct site *nn[12];
 } site;
 
@@ -19,5 +19,5 @@ typedef struct lattice {
    site *site;
 } lattice;
 
-lattice new_lattice(int _m);
-int find_id_by_pos(int _x, int _y, int _z, int m);
+lattice new_lattice(int m);
+int find_id_by_pos(int x, int y, int z, int m);
