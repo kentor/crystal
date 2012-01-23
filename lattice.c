@@ -2,13 +2,13 @@
 #include <stdlib.h>
 #include "lattice.h"
 
-lattice new_lattice(int _m)
+lattice_t new_lattice(int _m)
 {
    int _nsites = 4*_m*_m*_m;
-   lattice lat;
+   lattice_t lat;
    lat.m = _m;
    lat.nsites = _nsites;
-   lat.site = malloc(_nsites*sizeof(site));
+   lat.site = malloc(_nsites*sizeof(site_t));
 
    for (int n = 0; n < _nsites; n++) {
       lat.site[n].id = n;

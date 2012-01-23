@@ -42,8 +42,8 @@ int main()
    }
 
    describe_lattice_new: {
-      lattice lat2 = new_lattice(2);
-      lattice lat30 = new_lattice(30);
+      lattice_t lat2 = new_lattice(2);
+      lattice_t lat30 = new_lattice(30);
 
       it_should_have_correct_m_and_nsites: {
          assert(lat2.m == 2);

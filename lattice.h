@@ -1,7 +1,7 @@
 #ifndef LATTICE_H
 #define LATTICE_H
 
-#define _site(ptr) ((site *)(ptr))
+#define _site(ptr) ((site_t *)(ptr))
 
 typedef enum state {
    _vacuum, _silver, _surface, _pvp
@@ -16,15 +16,15 @@ typedef struct site {
    double energy;
    double rate;
    struct site *nn[12];
-} site;
+} site_t;
 
 typedef struct lattice {
    int m;
    int nsites;
-   site *site;
-} lattice;
+   site_t *site;
+} lattice_t;
 
-lattice new_lattice(int m);
+lattice_t new_lattice(int m);
 int find_id_by_pos(int x, int y, int z, int m);
 
 #endif
