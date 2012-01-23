@@ -15,16 +15,15 @@ void add_silver(site_t *site);
 void rm_silver(site_t *site);
 void add_pvp(site_t *site);
 void rm_pvp(site_t *site);
-void site_to_surface(site_t *site);
 void update_nrg_around(site_t *site);
 void draw(int max_slvr, int max_pvp, char *fn);
 
 lattice_t lat;
-double _T = 0.0375;
+double _T = 0.0350;
 double _V = 1e34;
 int _rad = 4;
 int _nslvr = 2000;
-int _npvp = 200;
+int _npvp = 2000;
 int _nsteps = 1000000;
 int _interval = 1000;
 int _seed;
@@ -42,11 +41,11 @@ int main(int argc, char **argv)
 {
    initialize_kmc(30, _rad);
    
-   draw(2000, 200, xyzfile);
+   draw(2000, 2000, xyzfile);
    for (int step = 1; step <= _nsteps; step++) {
       kmc();
       if (step % _interval == 0) {
-         draw(2000, 200, xyzfile);
+         draw(2000, 2000, xyzfile);
       }
    }
    
@@ -70,8 +69,8 @@ void kmc(void)
       gpointer key, member; \
       set_iter_init(iter, table) \
       while (set_iter_next(iter, key, member)) { \
-         p_sum[index++] = ktot += rate; \
          obj_ary[index] = _site(member); \
+         p_sum[index++] = ktot += rate; \
       } \
    } while (0) 
    #endif
@@ -128,7 +127,6 @@ void initialize_kmc(int m, int rad)
       dy = lat.site[i].pos[1] - center[1];
       dz = lat.site[i].pos[2] - center[2];
       if (dx*dx + dy*dy + dz*dz < rad*rad) {
-         site_to_surface(&lat.site[i]);
          add_silver(&lat.site[i]);
       }
    }
@@ -144,8 +142,12 @@ void destroy_kmc(void)
 
 void add_silver(site_t *site)
 {
-   if (site->state != _surface) return;
-   set_remove(surf_tbl, site);
+   if (site->state == _surface) {
+      set_remove(surf_tbl, site);
+   }
+   else if (site->state != _vacuum) {
+      return;
+   }
    set_insert(ttl_slvr_tbl, site);
    if (site->neighbors < 11)
       set_insert(slvr_tbl, site);
@@ -192,8 +194,12 @@ void rm_silver(site_t *site)
 
 void add_pvp(site_t *site)
 {
-   if (site->state != _surface) return;
-   set_remove(surf_tbl, site);
+   if (site->state == _surface) {
+      set_remove(surf_tbl, site);
+   }
+   else if (site->state != _vacuum) {
+      return;
+   }
    set_insert(pvp_tbl, site);
    site->state = _pvp;
    update_nrg_around(site);
@@ -211,13 +217,6 @@ void rm_pvp(site_t *site)
       site->state = _vacuum;
    }
    update_nrg_around(site);
-}
-
-void site_to_surface(site_t *site)
-{
-   if (site->state != _vacuum) return;
-   set_insert(surf_tbl, site);
-   site->state = _surface;
 }
 
 void update_nrg_around(site_t *site)
