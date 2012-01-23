@@ -223,6 +223,7 @@ void rm_pvp(site_t *site)
 
 void update_nrg_around(site_t *site)
 {
+   
    set *slvr_nnn = set_new();
    set *pvp_nnn = set_new();
 
@@ -265,6 +266,46 @@ void update_nrg_around(site_t *site)
 
    set_destroy(slvr_nnn);
    set_destroy(pvp_nnn);
+   
+   // int cell, size = 0, cell_list[27];
+   // cell = (site->id)/4;
+   // int x, y, z, r, m = lat.m;
+   // z = cell / (m*m); r = cell % (m*m);
+   // y = r / m; x = r % m;
+
+   // for (int k = z-1; k <= z+1; k++) {
+   //    if (k < 0 || k >= m) continue;
+   //    for (int j = y-1; j <= y+1; j++) {
+   //       if (j < 0 || j >= m) continue;
+   //       for (int i = x-1; i <= x+1; i++) {
+   //          if (i < 0|| i >= m) continue;
+   //          cell_list[size++] = i + j*m + k*m*m;
+   //       }
+   //    }
+   // }
+
+   // for (int i = 0; i < size; i++) {
+   //    for (int j = cell_list[i]*4; j < cell_list[i]*4+4; j++) {
+   //       if (lat.site[j].state == _silver) {
+   //          lat.site[j].energy = slvr_nrg[lat.site[j].neighbors];
+
+   //          for (int k = 0; k < lat.site[j].nn_count; k++) {
+   //             site_t *neigh = lat.site[j].nn[k];
+   //             if (neigh->state == _silver) {
+   //                lat.site[j].energy += slvr_nrg_d[neigh->neighbors];
+   //             }
+   //             else if (neigh->state == _pvp) {
+   //                lat.site[j].energy += pvp_nrg_d[neigh->neighbors];
+   //             }
+   //          }
+   //          lat.site[j].rate = exp(-lat.site[j].energy / _T);
+   //       }
+   //       else if (lat.site[j].state == _pvp) {
+   //          lat.site[j].energy = pvp_nrg[lat.site[j].neighbors];
+   //          lat.site[j].rate = exp(-lat.site[j].energy / _T);
+   //       }
+   //    }
+   // }
 }
 
 void draw(int max_slvr, int max_pvp, char *fn)
