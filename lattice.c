@@ -2,21 +2,19 @@
 #include <stdlib.h>
 #include "lattice.h"
 
-lattice_t new_lattice(int _m)
+site_t *new_lattice(int _m)
 {
    int _nsites = 4*_m*_m*_m;
-   lattice_t lat;
-   lat.m = _m;
-   lat.nsites = _nsites;
-   lat.site = malloc(_nsites*sizeof(site_t));
+   site_t *site
+   site = malloc(_nsites*sizeof(site_t));
 
    for (int n = 0; n < _nsites; n++) {
-      lat.site[n].id = n;
-      lat.site[n].neighbors = 0;
-      lat.site[n].nn_count = 0;
-      lat.site[n].state = _vacuum;
-      lat.site[n].energy = 0.0;
-      lat.site[n].rate = 1.0;
+      site[n].id = n;
+      site[n].neighbors = 0;
+      site[n].nn_count = 0;
+      site[n].state = _vacuum;
+      site[n].energy = 0.0;
+      site[n].rate = 1.0;
       for (int i = 0; i < 12; lat.site[n].nn[i++] = NULL);
    }
 
