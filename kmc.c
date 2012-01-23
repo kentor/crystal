@@ -7,16 +7,16 @@
 #include "lattice.h"
 #include "set.h"
 
-void initialize_kmc(int m);
+void initialize_kmc(int m, int rad);
 void destroy_kmc(void);
+void kmc(void);
 
 void add_silver(site_t *site);
 void rm_silver(site_t *site);
 void add_pvp(site_t *site);
 void rm_pvp(site_t *site);
-void update_nrg_around(site_t *site);
 void site_to_surface(site_t *site);
-
+void update_nrg_around(site_t *site);
 void draw(int max_slvr, int max_pvp, char *fn);
 
 lattice_t lat;
@@ -40,18 +40,16 @@ char *xyzfile = "movie.xyz";
 
 int main(int argc, char **argv)
 {
-
-   // initialize_kmc(30);
-   /*
-   draw();
+   initialize_kmc(30, _rad);
+   
+   draw(2000, 200, xyzfile);
    for (int step = 1; step <= _nsteps; step++) {
       kmc();
       if (step % _interval == 0) {
-         print_progress();
-         draw();
+         draw(2000, 200, xyzfile);
       }
    }
-   */
+   
    return 0;
 }
 
@@ -83,8 +81,6 @@ void kmc(void)
    fill_p_sum(slvr_tbl, _site(member)->rate);
    fill_p_sum(pvp_tbl, _site(member)->rate);
 
-   if (_size != index) exit(0);
-
    double r = ktot * gsl_rng_uniform(_rng);
    for (int i = 0; i < index; i++) {
       if (r <= p_sum[i]) {
@@ -100,10 +96,11 @@ void kmc(void)
          return;
       }
    }
-   exit(0);
+   puts("..");
+   exit(2);
 }
 
-void initialize_kmc(int m)
+void initialize_kmc(int m, int rad)
 {
    lat = new_lattice(m);
    ttl_slvr_tbl = set_new();
@@ -117,6 +114,23 @@ void initialize_kmc(int m)
    for (int i = 1; i < 13; i++) {
       slvr_nrg_d[i] = slvr_nrg[i] - slvr_nrg[i-1];
       pvp_nrg_d[i] = pvp_nrg[i] - pvp_nrg[i-1];
+   }
+
+   /* seed crystal */
+   int site = m/2;
+   site = 4*(site + site*m + site*m*m);
+   for (int i = 0; i < 3; i++) {
+      center[i] = lat.site[site].pos[i];
+   }
+   for (int i = 0; i < lat.nsites; i++) {
+      int dx, dy, dz;
+      dx = lat.site[i].pos[0] - center[0];
+      dy = lat.site[i].pos[1] - center[1];
+      dz = lat.site[i].pos[2] - center[2];
+      if (dx*dx + dy*dy + dz*dz < rad*rad) {
+         site_to_surface(&lat.site[i]);
+         add_silver(&lat.site[i]);
+      }
    }
 }
 
@@ -147,6 +161,7 @@ void add_silver(site_t *site)
          set_remove(slvr_tbl, site->nn[i]);
       }
    }
+   update_nrg_around(site);
 }
 
 void rm_silver(site_t *site)
@@ -172,6 +187,7 @@ void rm_silver(site_t *site)
          set_insert(slvr_tbl, site->nn[i]);
       }
    }
+   update_nrg_around(site);
 }
 
 void add_pvp(site_t *site)
@@ -180,6 +196,7 @@ void add_pvp(site_t *site)
    set_remove(surf_tbl, site);
    set_insert(pvp_tbl, site);
    site->state = _pvp;
+   update_nrg_around(site);
 }
 
 void rm_pvp(site_t *site)
@@ -193,6 +210,7 @@ void rm_pvp(site_t *site)
    else {
       site->state = _vacuum;
    }
+   update_nrg_around(site);
 }
 
 void site_to_surface(site_t *site)
@@ -251,6 +269,7 @@ void update_nrg_around(site_t *site)
 void draw(int max_slvr, int max_pvp, char *fn)
 {
    if (!_draw) return;
+
    static FILE *fp = NULL;
    int count = 0;
    set_iter iter;
@@ -258,7 +277,7 @@ void draw(int max_slvr, int max_pvp, char *fn)
 
    if (fp == NULL) fp = fopen(fn, "w");
 
-   fprintf(fp, "%d\n\n", max_slvr, max_pvp);
+   fprintf(fp, "%d\n\n", max_slvr+max_pvp);
 
    set_iter_init(iter, slvr_tbl);
    while (set_iter_next(iter, key, value)) {
