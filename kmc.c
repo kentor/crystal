@@ -24,8 +24,10 @@ double _V = 1e34;
 int _rad = 4;
 int _nslvr = 2000;
 int _npvp = 2000;
-int _nsteps = 1000000;
-int _interval = 1000;
+// int _nsteps = 1000000;
+int _nsteps = 10000000;
+// int _interval = 1000;
+int _interval = 10000;
 int _seed;
 int center[3];
 int _max_slvr, _max_pvp;
@@ -41,11 +43,11 @@ int main(int argc, char **argv)
 {
    initialize_kmc(30, _rad);
    
-   draw(2000, 2000, xyzfile);
+   draw(3000, 3000, xyzfile);
    for (int step = 1; step <= _nsteps; step++) {
       kmc();
       if (step % _interval == 0) {
-         draw(2000, 2000, xyzfile);
+         draw(3000, 3000, xyzfile);
       }
    }
    
