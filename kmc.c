@@ -305,7 +305,7 @@ void draw(int max_slvr, int max_pvp, char *fn)
       fprintf(fp, "\n");
       count++;
 
-      if (count == max_slvr) break;
+      if (count == max_pvp) break;
    }
 
    for (int i = 0; i < max_pvp - count; i++) {
