@@ -5,14 +5,14 @@
 
 typedef enum state {
    _vacuum, _silver, _surface, _pvp
-} state;
+} state_t;
 
 typedef struct site {
    int id;
    int pos[3];
    int neighbors;
    int nn_count;
-   state state;
+   state_t state;
    double energy;
    double rate;
    struct site *nn[12];
