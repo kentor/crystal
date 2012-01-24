@@ -1,51 +1,60 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <stdbool.h>
 #include <math.h>
 #include <time.h>
 #include <gsl/gsl_rng.h>
+#include <assert.h>
 #include "lattice.h"
-#include "set.h"
+#include "ll.h"
 
 void initialize_kmc(int m, int rad);
-void destroy_kmc(void);
 void kmc(void);
 
-void add_silver(site_t *site);
-void rm_silver(site_t *site);
-void add_pvp(site_t *site);
-void rm_pvp(site_t *site);
-void update_nrg_around(site_t *site);
-void draw(int max_slvr, int max_pvp, char *fn);
+void add_silver(int site_id);
+void rm_silver(int site_id);
+void add_pvp(int site_id);
+void rm_pvp(int site_id);
+void update_nrg_around(int site_id);
+void draw(int max_slvr_d, int max_pvp_d, char *fn);
 
-lattice_t lat;
+site_t *site;
 double _T = 0.0350;
 double _V = 1e34;
 int _rad = 4;
-int _nslvr = 10000;
-int _npvp = 10000;
+int _max_slvr = 10000;
+int _max_pvp = 10000;
 int _nsteps = 1000000;
 int _interval = 1000;
 int _seed;
-int center[3];
-int _max_slvr, _max_pvp;
+int _max_slvr_d, _max_pvp_d;
+int _center[3];
 gsl_rng *_rng;
-set *ttl_slvr_tbl, *slvr_tbl, *surf_tbl, *pvp_tbl;
 bool _draw = true;
 double slvr_nrg[13] = { 0, 1, 1.5, 1.65, 1.8, 1.95, 2.1, 2.25, 2.4, 2.55, 2.7, 2.85, 3 };
 double pvp_nrg[13] = { 0, 0, 2.4, 2.5, 2.6, 2.5, 2.4, 2, 0.5, 0, 0, 0, 0 };
 double slvr_nrg_d[13] = { 0 }, pvp_nrg_d[13] = { 0 };
-char *xyzfile = "movie.xyz";
+char *fn = "movie.xyz";
+
+int *ll;
+int _slvr_head = null, _pvp_head = null, _surf_head = null;
+int _nslvr = 0, _npvp = 0, _nsurf = 0;
+int _ttlslvr = 0;
+
+#define not(_state, id) site[id].state != _state
+#define is(_state, id) site[id].state == _state
+#define to(_state, id) site[id].state = _state
 
 int main(int argc, char **argv)
 {
    initialize_kmc(30, _rad);
    
-   draw(3000, 3000, xyzfile);
+   draw(3000, 3000, fn);
    for (int step = 1; step <= _nsteps; step++) {
       kmc();
       if (step % _interval == 0) {
-         draw(3000, 3000, xyzfile);
+         draw(3000, 3000, fn);
       }
    }
    
@@ -55,43 +64,55 @@ int main(int argc, char **argv)
 void kmc(void)
 {
    int index = 0;
-   int _size = 2*set_size(surf_tbl) + set_size(slvr_tbl) + set_size(pvp_tbl);
-   site_t *obj_ary[_size];
-   double p_sum[_size];
+   int size = 2*_nsurf + _nslvr + _npvp;
+   int ids[size];
+   double p_sum[size];
    double ktot = 0.0;
-   double rate_addition_silver = (_nslvr - set_size(ttl_slvr_tbl)) / _V;
-   double rate_addition_pvp = (_npvp - set_size(pvp_tbl)) / _V;
+   double rate_addition_silver = (_max_slvr - _ttlslvr) / _V;
+   double rate_addition_pvp = (_max_pvp - _npvp) / _V;
 
-   #ifndef fill_p_sum
-   #define fill_p_sum(table, rate) \
-   do { \
-      set_iter iter; \
-      gpointer key, member; \
-      set_iter_init(iter, table) \
-      while (set_iter_next(iter, key, member)) { \
-         obj_ary[index] = _site(member); \
-         p_sum[index++] = ktot += rate; \
-      } \
-   } while (0) 
-   #endif
+   int j = 0;
+   for (int i = _surf_head; i != null; i++) {
+      j++;
+      if (j > 110000) break;
+   }
+   assert(j == _nsurf);
+   j = 0;
+   for (int i = _slvr_head; i != null; i++, j++);
+   assert(j == _nslvr);
+   j = 0;
+   for (int i = _pvp_head; i != null; i++, j++);
+   assert(j == _npvp);
 
-   fill_p_sum(surf_tbl, rate_addition_silver);
-   fill_p_sum(surf_tbl, rate_addition_pvp);
-   fill_p_sum(slvr_tbl, _site(member)->rate);
-   fill_p_sum(pvp_tbl, _site(member)->rate);
+   for (int i = _surf_head; i != null; i++) {
+      ids[index] = i;
+      p_sum[index++] = ktot += rate_addition_silver;
+   }
+   for (int i = _surf_head; i != null; i++) {
+      ids[index] = i;
+      p_sum[index++] = ktot += rate_addition_pvp;
+   }
+   for (int i = _slvr_head; i != null; i++) {
+      ids[index] = i;
+      p_sum[index++] = ktot += site[i].rate;
+   }
+   for (int i = _pvp_head; i != null; i++) {
+      ids[index] = i;
+      p_sum[index++] = ktot += site[i].rate;
+   }
 
    double r = ktot * gsl_rng_uniform(_rng);
    for (int i = 0; i < index; i++) {
       if (r <= p_sum[i]) {
          int a = 0;
-         if (a <= i && i < (a += set_size(surf_tbl)))
-            add_silver(obj_ary[i]);
-         else if (a <= i && i < (a += set_size(surf_tbl)))
-            add_pvp(obj_ary[i]);
-         else if (a <= i && i < (a += set_size(slvr_tbl)))
-            rm_silver(obj_ary[i]);
-         else if (a <= i && i < (a += set_size(pvp_tbl)))
-            rm_pvp(obj_ary[i]);
+         if (a <= i && i < (a += _nsurf))
+            add_silver(ids[i]);
+         else if (a <= i && i < (a += _nsurf))
+            add_pvp(ids[i]);
+         else if (a <= i && i < (a += _nslvr))
+            rm_silver(ids[i]);
+         else if (a <= i && i < (a += _npvp))
+            rm_pvp(ids[i]);
          return;
       }
    }
@@ -101,12 +122,10 @@ void kmc(void)
 
 void initialize_kmc(int m, int rad)
 {
-   lat = new_lattice(m);
-   ttl_slvr_tbl = set_new();
-   slvr_tbl = set_new();
-   surf_tbl = set_new();
-   pvp_tbl = set_new();
-
+   int nsites = 4*m*m*m;
+   site = new_lattice(m);
+   new_ll(ll, nsites);
+   
    _rng = gsl_rng_alloc(gsl_rng_mt19937);
    gsl_rng_set(_rng, _seed);
 
@@ -115,160 +134,112 @@ void initialize_kmc(int m, int rad)
       pvp_nrg_d[i] = pvp_nrg[i] - pvp_nrg[i-1];
    }
 
-   /* seed crystal */
-   int site = m/2;
-   site = 4*(site + site*m + site*m*m);
+   int id = m/2;
+   id = 4*(id + id*m + id*m*m);
    for (int i = 0; i < 3; i++) {
-      center[i] = lat.site[site].pos[i];
+      _center[i] = site[id].pos[i];
    }
-   for (int i = 0; i < lat.nsites; i++) {
+   for (int i = 0; i < nsites; i++) {
       int dx, dy, dz;
-      dx = lat.site[i].pos[0] - center[0];
-      dy = lat.site[i].pos[1] - center[1];
-      dz = lat.site[i].pos[2] - center[2];
+      dx = site[i].pos[0] - _center[0];
+      dy = site[i].pos[1] - _center[1];
+      dz = site[i].pos[2] - _center[2];
       if (dx*dx + dy*dy + dz*dz < rad*rad) {
-         add_silver(&lat.site[i]);
+         add_silver(i);
       }
    }
 }
 
-void destroy_kmc(void)
+void add_silver(int id)
 {
-   set_destroy(ttl_slvr_tbl);
-   set_destroy(slvr_tbl);
-   set_destroy(surf_tbl);
-   set_destroy(pvp_tbl);
-}
-
-void add_silver(site_t *site)
-{
-   if (site->state == _surface) {
-      set_remove(surf_tbl, site);
+   if (is(surface, id)) {
+      ll_remove(ll, id, _surf_head, _nsurf);
    }
-   else if (site->state != _vacuum) {
+   else if (not(vacuum, id)) {
       return;
    }
-   set_insert(ttl_slvr_tbl, site);
-   if (site->neighbors < 11)
-      set_insert(slvr_tbl, site);
-   site->state = _silver;
+   if (site[id].neighbors < 11) {
+      ll_insert(ll, id, _slvr_head, _nslvr);
+   }
+   to(silver, id);
 
-   for (int i = 0; i < site->nn_count; i++) {
-      site->nn[i]->neighbors++;
-      if (site->nn[i]->state == _vacuum) {
-         set_insert(surf_tbl, site->nn[i]);
-         site->nn[i]->state = _surface;
+   for (int i = 0; i < site[id].nn_count; i++) {
+      int neigh = site[id].nn[i];
+      site[neigh].neighbors++;
+      if (is(vacuum, neigh)) {
+         ll_insert(ll, neigh, _surf_head, _nsurf);
+         to(surface, neigh);
       }
-      else if (site->nn[i]->state == _silver && site->nn[i]->neighbors == site->nn[i]->nn_count) {
-         set_remove(slvr_tbl, site->nn[i]);
+      else if (is(silver, id) && site[id].neighbors == site[id].nn_count) {
+         ll_remove(ll, neigh, _slvr_head, _nslvr);
       }
    }
-   update_nrg_around(site);
+   _ttlslvr++;
+   update_nrg_around(id);
 }
 
-void rm_silver(site_t *site)
+void rm_silver(int id)
 {
-   if (site->state != _silver) return;
-   set_remove(slvr_tbl, site);
-   set_remove(ttl_slvr_tbl, site);
-   if (site->neighbors > 0) {
-      set_insert(surf_tbl, site);
-      site->state = _surface;
+   if (not(silver, id)) return;
+   if (site[id].neighbors < site[id].nn_count) {
+      ll_remove(ll, id, _slvr_head, _nslvr);
+   }
+   if (site[id].neighbors > 0) {
+      ll_insert(ll, id, _surf_head, _nsurf);
+      to(surface, id);
    }
    else {
-      site->state = _vacuum;
+      to(vacuum, id);
    }
 
-   for (int i = 0; i < site->nn_count; i++) {
-      site->nn[i]->neighbors--;
-      if (site->nn[i]->state == _surface && site->nn[i]->neighbors == 0) {
-         set_remove(surf_tbl, site->nn[i]);
-         site->nn[i]->state = _vacuum;
+   for (int i = 0; i < site[id].nn_count; i++) {
+      int neigh = site[id].nn[i];
+      site[neigh].neighbors--;
+      if (is(surface, neigh) && site[neigh].neighbors == 0) {
+         ll_remove(ll, neigh, _surf_head, _nsurf);
+         to(vacuum, neigh);
       }
-      else if (site->nn[i]->state == _silver && !set_include(slvr_tbl, site->nn[i])) {
-         set_insert(slvr_tbl, site->nn[i]);
+      else if (is(silver, neigh) && site[id].neighbors+1 == site[id].nn_count) {
+         ll_insert(ll, neigh, _slvr_head, _nslvr);
       }
    }
-   update_nrg_around(site);
+   _ttlslvr--;
+   update_nrg_around(id);
 }
 
-void add_pvp(site_t *site)
+void add_pvp(int id)
 {
-   if (site->state == _surface) {
-      set_remove(surf_tbl, site);
+   if (is(surface, id)) {
+      ll_remove(ll, id, _surf_head, _nsurf);
    }
-   else if (site->state != _vacuum) {
+   else if (not(vacuum, id)) {
       return;
    }
-   set_insert(pvp_tbl, site);
-   site->state = _pvp;
-   update_nrg_around(site);
+   ll_insert(ll, id, _pvp_head, _npvp);
+   to(pvp, id);
+   update_nrg_around(id);
 }
 
-void rm_pvp(site_t *site)
+void rm_pvp(int id)
 {
-   if (site->state != _pvp) return;
-   set_remove(pvp_tbl, site);
-   if (site->neighbors > 0) {
-      set_insert(surf_tbl, site);
-      site->state = _surface;
+   if (not(pvp, id)) return;
+   ll_remove(ll, id, _pvp_head, _npvp);
+   if (site[id].neighbors > 0) {
+      ll_insert(ll, id, _surf_head, _nsurf);
+      to(surface, id);
    }
    else {
-      site->state = _vacuum;
+      to(vacuum, id);
    }
-   update_nrg_around(site);
+   update_nrg_around(id);
 }
 
-void update_nrg_around(site_t *site)
+void update_nrg_around(int id)
 {
-   /*
-   set *slvr_nnn = set_new();
-   set *pvp_nnn = set_new();
-
-   for (int L1 = 0; L1 < site->nn_count; L1++) {
-      for (int L2 = 0; L2 < site->nn[L1]->nn_count; L2++) {
-         if (site->nn[L1]->nn[L2]->state == _silver) {
-            set_insert(slvr_nnn, site->nn[L1]->nn[L2]);
-         }
-         else if (site->nn[L1]->nn[L2]->state == _pvp) {
-            set_insert(pvp_nnn, site->nn[L1]->nn[L2]);
-         }
-      }
-   }
-
-   set_iter iter;
-   gpointer key, value;
-
-   set_iter_init(iter, slvr_nnn);
-   while (set_iter_next(iter, key, value)) {
-      site_t *member = _site(value);
-      member->energy = slvr_nrg[member->neighbors];
-      for (int i = 0; i < member->nn_count; i++) {
-         site_t *neigh = member->nn[i];
-         if (neigh->state == _silver) {
-            member->energy += slvr_nrg_d[neigh->neighbors];
-         }
-         else if (neigh->state == _pvp) {
-            member->energy += pvp_nrg_d[neigh->neighbors];
-         }
-      }
-      member->rate = exp(-member->energy / _T);
-   }
-
-   set_iter_init(iter, pvp_nnn);
-   while (set_iter_next(iter, key, value)) {
-      site_t *member = _site(value);
-      member->energy = pvp_nrg[member->neighbors];
-      member->rate = exp(-member->energy / _T);
-   }
-
-   set_destroy(slvr_nnn);
-   set_destroy(pvp_nnn);
-   */
    
    int cell, size = 0, cell_list[27];
-   cell = (site->id)/4;
-   int x, y, z, r, m = lat.m;
+   cell = id/4;
+   int x, y, z, r, m = 30;
    z = cell / (m*m); r = cell % (m*m);
    y = r / m; x = r % m;
 
@@ -285,73 +256,67 @@ void update_nrg_around(site_t *site)
 
    for (int i = 0; i < size; i++) {
       for (int j = cell_list[i]*4; j < cell_list[i]*4+4; j++) {
-         if (lat.site[j].state == _silver) {
-            lat.site[j].energy = slvr_nrg[lat.site[j].neighbors];
+         if (is(silver, j)) {
+            site[j].energy = slvr_nrg[site[j].neighbors];
 
-            for (int k = 0; k < lat.site[j].nn_count; k++) {
-               site_t *neigh = lat.site[j].nn[k];
-               if (neigh->state == _silver) {
-                  lat.site[j].energy += slvr_nrg_d[neigh->neighbors];
+            for (int k = 0; k < site[j].nn_count; k++) {
+               int neigh = site[j].nn[k];
+               if (is(silver, neigh)) {
+                  site[j].energy += slvr_nrg_d[site[neigh].neighbors];
                }
-               else if (neigh->state == _pvp) {
-                  lat.site[j].energy += pvp_nrg_d[neigh->neighbors];
+               else if (is(pvp, neigh)) {
+                  site[j].energy += pvp_nrg_d[site[neigh].neighbors];
                }
             }
-            lat.site[j].rate = exp(-lat.site[j].energy / _T);
+            site[j].rate = exp(-site[j].energy / _T);
          }
-         else if (lat.site[j].state == _pvp) {
-            lat.site[j].energy = pvp_nrg[lat.site[j].neighbors];
-            lat.site[j].rate = exp(-lat.site[j].energy / _T);
+         else if (is(pvp, j)) {
+            site[j].energy = pvp_nrg[site[j].neighbors];
+            site[j].rate = exp(-site[j].energy / _T);
          }
       }
    }
 }
 
-void draw(int max_slvr, int max_pvp, char *fn)
+void draw(int max_slvr_d, int max_pvp_d, char *fn)
 {
-   if (_draw) return;
+   if (!_draw) return;
 
    static FILE *fp = NULL;
    int count = 0;
-   set_iter iter;
-   gpointer key, value;
 
    if (fp == NULL) fp = fopen(fn, "w");
 
-   fprintf(fp, "%d\n\n", max_slvr+max_pvp);
+   fprintf(fp, "%d\n\n", max_slvr_d + max_pvp_d);
 
-   set_iter_init(iter, slvr_tbl);
-   while (set_iter_next(iter, key, value)) {
-      site_t *member = _site(value);
+   for (int i = _slvr_head; i != null; i = ll[i]) {
       fprintf(fp, "C");
-      for (int i = 0; i < 3; fprintf(fp, " %d", member->pos[i++]));
+      for (int j = 0; j < 3; fprintf(fp, " %d", site[i].pos[j++]));
       fprintf(fp, "\n");
       count++;
 
-      if (count == max_slvr) break;
+      if (count == max_slvr_d) break;
    }
 
-   for (int i = 0; i < max_slvr - count; i++) {
+   for (int i = 0; i < max_slvr_d - count; i++) {
       fprintf(fp, "C");
-      for (int j = 0; j < 3; fprintf(fp, " %d", center[j++]));
+      for (int j = 0; j < 3; fprintf(fp, " %d", _center[j++]));
       fprintf(fp, "\n");
    }
 
    count = 0;
-   set_iter_init(iter, pvp_tbl);
-   while (set_iter_next(iter, key, value)) {
-      site_t *member = _site(value);
+   for (int i = _pvp_head; i != null; i = ll[i]) {
       fprintf(fp, "F");
-      for (int i = 0; i < 3; fprintf(fp, " %d", member->pos[i++]));
+      for (int j = 0; j < 3; fprintf(fp, " %d", site[i].pos[j++]));
       fprintf(fp, "\n");
       count++;
 
-      if (count == max_pvp) break;
+      if (count == max_pvp_d) break;
    }
 
-   for (int i = 0; i < max_pvp - count; i++) {
+   for (int i = 0; i < max_pvp_d - count; i++) {
       fprintf(fp, "F");
-      for (int j = 0; j < 3; fprintf(fp, " %d", center[j++]));
+      for (int j = 0; j < 3; fprintf(fp, " %d", _center[j++]));
       fprintf(fp, "\n");
    }
 }

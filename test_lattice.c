@@ -42,45 +42,37 @@ int main()
    }
 
    describe_lattice_new: {
-      lattice_t lat2 = new_lattice(2);
-      lattice_t lat30 = new_lattice(30);
-
-      it_should_have_correct_m_and_nsites: {
-         assert(lat2.m == 2);
-         assert(lat2.nsites == 32);
-         assert(lat30.m == 30);
-         assert(lat30.nsites == 108000);
-         puts(".");
-      }
+      site_t *site2 = new_lattice(2);
+      site_t *site30 = new_lattice(30);
 
       it_should_create_nsites_site_objects: {
-         for (int i = 0; i < lat2.nsites; i++) {
-            assert(lat2.site[i].id == i);
+         for (int i = 0; i < 4*2*2*2; i++) {
+            assert(site2[i].id == i);
          }
-         for (int i = 0; i < lat30.nsites; i++) {
-            assert(lat30.site[i].id == i);
+         for (int i = 0; i < 4*30*30*30; i++) {
+            assert(site30[i].id == i);
          }
          puts(".");
       }
 
       it_should_determine_position_of_sites: {
-         assert(find_id_by_pos(lat2.site[28].pos[0], lat2.site[28].pos[1],
-            lat2.site[28].pos[2], 2) == 28);
-         assert(find_id_by_pos(lat30.site[54346].pos[0], lat30.site[54346].pos[1],
-            lat30.site[54346].pos[2], 30) == 54346);
+         assert(find_id_by_pos(site2[28].pos[0], site2[28].pos[1],
+            site2[28].pos[2], 2) == 28);
+         assert(find_id_by_pos(site30[54346].pos[0], site30[54346].pos[1],
+            site30[54346].pos[2], 30) == 54346);
          puts(".");
       }
 
       it_should_determine_neighbor_count_for_sites: {
-         assert(lat2.site[0].nn_count == 3);
-         assert(lat2.site[28].nn_count == 12);
+         assert(site2[0].nn_count == 3);
+         assert(site2[28].nn_count == 12);
          puts(".");
       }
 
       it_should_make_correct_neighbors_of_sites: {
-         assert(lat2.site[0].nn[0] == &lat2.site[1]);
-         assert(lat2.site[1].nn[0] == &lat2.site[0]);
-         assert(lat2.site[0].nn[4] == NULL);
+         assert(site2[0].nn[0] == 1);
+         assert(site2[1].nn[0] == 0);
+         assert(site2[0].nn[4] == -1);
          puts(".");
       }
    }
