@@ -5,32 +5,37 @@
 #include <string.h>
 #define null (-1)
 
+typedef struct list {
+   int head;
+   int size;
+} list_t;
+
 #define new_ll(ll, size) \
 do { \
    ll = malloc(size * sizeof(int)); \
    memset(ll, null, size * sizeof(int)); \
 } while (0) 
 
-#define ll_insert(ll, value, head, counter) \
+#define ll_insert(ll, value, list) \
 do { \
    if (ll[value] != null) { printf("Illegal insertion, ll[%d] = %d\n", value, ll[value]); exit(1); } \
-   if (counter == 0 && head != null) { perror("Head should be null when inserting first element."); exit(1); } \
-   ll[value] = head; \
-   head = value; \
-   counter++; \
+   if (list.size == 0 && list.head != null) { perror("Head should be null when inserting first element."); exit(1); } \
+   ll[value] = list.head; \
+   list.head = value; \
+   list.size++; \
 } while (0)
 
-#define ll_remove(ll, value, head, counter) \
+#define ll_remove(ll, value, list) \
 do { \
-   int i = head; \
-   if (i == value) head = ll[value]; \
+   int i = list.head; \
+   if (i == value) list.head = ll[value]; \
    else while (ll[i] != value) { \
       i = ll[i]; \
       if (i == null) { printf("wtf\n"); exit(2); } \
    } \
    ll[i] = ll[value]; \
    ll[value] = null; \
-   counter--; \
+   list.size--; \
 } while (0)
 
 #endif
