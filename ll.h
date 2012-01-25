@@ -13,13 +13,13 @@ typedef struct list {
 #define new_ll(_ll, _size) \
 do { \
    _ll = malloc(_size * sizeof(int)); \
-   memset(_ll, -1, _size * sizeof(int)); \
+   memset(_ll, null, _size * sizeof(int)); \
 } while (0) 
 
 #define ll_insert(_ll, _value, _list) \
 do { \
-   if (_ll[_value] != null) { printf("Illegal insertion, ll[%d] = %d\n", _value, _ll[_value]); exit(1); } \
-   if (_list.size == 0 && _list.head != null) { perror("Head should be null when inserting first element."); exit(1); } \
+   if (_ll[_value] != null) { perror("Illegal insertion error."); abort(); } \
+   if (_list.size == 0 && _list.head != null) { perror("Head should be null when inserting first element."); abort(); } \
    _ll[_value] = _list.head; \
    _list.head = _value; \
    _list.size++; \

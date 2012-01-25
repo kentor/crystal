@@ -5,10 +5,8 @@
 #include <math.h>
 #include <time.h>
 #include <gsl/gsl_rng.h>
-#include <assert.h>
 #include "lattice.h"
 #include "ll.h"
-void check(void);
 
 void initialize_kmc(int m, int rad);
 void kmc(void);
@@ -105,8 +103,8 @@ void kmc(void)
          return;
       }
    }
-   puts("..");
-   exit(2);
+
+   abort();
 }
 
 void initialize_kmc(int m, int rad)
