@@ -26,8 +26,8 @@ double _V = 1e34;
 int _rad = 4;
 int _max_slvr = 10000;
 int _max_pvp = 10000;
-int _nsteps = 1000000;
-int _interval = 1000;
+int _nsteps = 10000000;
+int _interval = 10000;
 int _seed;
 int _max_slvr_d, _max_pvp_d;
 int _center[3];
@@ -35,16 +35,18 @@ gsl_rng *_rng;
 bool _draw = true;
 double slvr_nrg[13] = { 0, 1, 1.5, 1.65, 1.8, 1.95, 2.1, 2.25, 2.4, 2.55, 2.7, 2.85, 3 };
 double pvp_nrg[13] = { 0, 0, 2.4, 2.5, 2.6, 2.5, 2.4, 2, 0.5, 0, 0, 0, 0 };
-double slvr_nrg_d[13] = { 0 }, pvp_nrg_d[13] = { 0 };
+double slvr_nrg_d[13], pvp_nrg_d[13];
 char *fn = "movie.xyz";
 
 int *ll;
-list_t _slvr_l = { .head = null, .size = 0}, _surf_l = { .head = null, .size = 0 }, _pvp_l = { .head = null, .size = 0};
+list_t _slvr_l = { .head = null, .size = 0 },
+   _surf_l = { .head = null, .size = 0 },
+   _pvp_l = { .head = null, .size = 0 };
 int _ttlslvr = 0;
 
-#define not(_state, id) site[id].state != _state
-#define is(_state, id) site[id].state == _state
-#define to(_state, id) site[id].state = _state
+#define not(_state, _id) site[_id].state != _state
+#define is(_state, _id) site[_id].state == _state
+#define to(_state, _id) site[_id].state = _state
 
 int main(int argc, char **argv)
 {
@@ -71,19 +73,19 @@ void kmc(void)
    double rate_addition_silver = (_max_slvr - _ttlslvr) / _V;
    double rate_addition_pvp = (_max_pvp - _pvp_l.size) / _V;
 
-   for (int i = _surf_l.head; i != null; i++) {
+   for (int i = _surf_l.head; i != null; i = ll[i]) {
       ids[index] = i;
       p_sum[index++] = ktot += rate_addition_silver;
    }
-   for (int i = _surf_l.head; i != null; i++) {
+   for (int i = _surf_l.head; i != null; i = ll[i]) {
       ids[index] = i;
       p_sum[index++] = ktot += rate_addition_pvp;
    }
-   for (int i = _slvr_l.head; i != null; i++) {
+   for (int i = _slvr_l.head; i != null; i = ll[i]) {
       ids[index] = i;
       p_sum[index++] = ktot += site[i].rate;
    }
-   for (int i = _pvp_l.head; i != null; i++) {
+   for (int i = _pvp_l.head; i != null; i = ll[i]) {
       ids[index] = i;
       p_sum[index++] = ktot += site[i].rate;
    }
@@ -143,8 +145,7 @@ void add_silver(int id)
       ll_remove(ll, id, _surf_l);
    }
    else if (not(vacuum, id)) {
-      perror("Illegal addition of silver.");
-      exit(3);
+      return;
    }
    if (site[id].neighbors < site[id].nn_count) {
       ll_insert(ll, id, _slvr_l);
@@ -168,7 +169,7 @@ void add_silver(int id)
 
 void rm_silver(int id)
 {
-   if (not(silver, id)) { perror("Illegal removal of silver"); exit(3); }
+   if (not(silver, id)) return;
    if (site[id].neighbors < site[id].nn_count) {
       ll_remove(ll, id, _slvr_l);
    }
@@ -201,8 +202,7 @@ void add_pvp(int id)
       ll_remove(ll, id, _surf_l);
    }
    else if (not(vacuum, id)) {
-      perror("Illegal addition of pvp");
-      exit(3);
+      return;
    }
    ll_insert(ll, id, _pvp_l);
    to(pvp, id);
@@ -211,7 +211,7 @@ void add_pvp(int id)
 
 void rm_pvp(int id)
 {
-   if (not(pvp, id)) { perror("Illegal removal of pvp"); exit(3); };
+   if (not(pvp, id)) return;
    ll_remove(ll, id, _pvp_l);
    if (site[id].neighbors > 0) {
       ll_insert(ll, id, _surf_l);
@@ -307,44 +307,4 @@ void draw(int max_slvr_d, int max_pvp_d, char *fn)
       for (int j = 0; j < 3; fprintf(fp, " %d", _center[j++]));
       fprintf(fp, "\n");
    }
-}
-
-void check(void)
-{
-   int fresh_ttl_slvr_count = 0;
-   int fresh_slvr_count = 0;
-   int fresh_surf_count = 0;
-   int fresh_pvp_count = 0;
-   for (int i = 0; i < 4*30*30*30; i++) {
-      if (is(vacuum, i)) continue;
-
-      if (is(silver, i)) {
-         if (site[i].neighbors < site[i].nn_count) {
-            fresh_slvr_count++;
-         }
-         fresh_ttl_slvr_count++;
-      }
-      else if (is(surface, i)) {
-         fresh_surf_count++;
-      }
-      else if (is(pvp, i)) {
-         fresh_pvp_count++;
-      }
-   }
-   printf("counted %d total silver, %d surface silver, %d surface sites, %d pvp\n",
-      fresh_ttl_slvr_count, fresh_slvr_count, fresh_surf_count, fresh_pvp_count);
-
-   int ll_count_slvr = 0;
-   int ll_count_pvp = 0;
-   int ll_count_surf = 0;
-   for (int i = _slvr_l.head; i >= 0; i++) {
-      ll_count_slvr++;
-   }
-   for (int i = _surf_l.head; i >= 0; i++) {
-      ll_count_surf++;
-   }
-   for (int i = _pvp_l.head; i >= 0; i++) {
-      ll_count_pvp++;
-   }
-   printf("counted %d in slvr_l, %d in surf_l, %d in pvp_l\n", ll_count_slvr, ll_count_surf, ll_count_pvp);
 }
