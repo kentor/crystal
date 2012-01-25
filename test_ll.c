@@ -12,7 +12,7 @@ int main()
          it_should_create_a_new_linked_list_with_null_elements: {
             new_ll(ll, 108000);
             for (int i = 0; i < 108000; i++) {
-               assert(ll[i] == null);
+               assert(ll[i] == -1);
             }
             puts(".");
          }

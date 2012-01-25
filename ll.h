@@ -3,17 +3,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#define null (-1)
+#define null -1
 
 typedef struct list {
    int head;
    int size;
 } list_t;
 
-#define new_ll(ll, size) \
+#define new_ll(_ll, size) \
 do { \
-   ll = malloc(size * sizeof(int)); \
-   memset(ll, null, size * sizeof(int)); \
+   _ll = malloc(size * sizeof(int)); \
+   memset(_ll, -1, size * sizeof(int)); \
 } while (0) 
 
 #define ll_insert(ll, value, list) \
@@ -29,10 +29,7 @@ do { \
 do { \
    int i = list.head; \
    if (i == value) list.head = ll[value]; \
-   else while (ll[i] != value) { \
-      i = ll[i]; \
-      if (i == null) { printf("wtf\n"); exit(2); } \
-   } \
+   else while (ll[i] != value) i = ll[i]; \
    ll[i] = ll[value]; \
    ll[value] = null; \
    list.size--; \

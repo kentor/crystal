@@ -8,6 +8,7 @@
 #include <assert.h>
 #include "lattice.h"
 #include "ll.h"
+void check(void);
 
 void initialize_kmc(int m, int rad);
 void kmc(void);
@@ -38,8 +39,7 @@ double slvr_nrg_d[13] = { 0 }, pvp_nrg_d[13] = { 0 };
 char *fn = "movie.xyz";
 
 int *ll;
-int _slvr_head = null, _pvp_head = null, _surf_head = null;
-int _nslvr = 0, _npvp = 0, _nsurf = 0;
+list_t _slvr_l = { .head = null, .size = 0}, _surf_l = { .head = null, .size = 0 }, _pvp_l = { .head = null, .size = 0};
 int _ttlslvr = 0;
 
 #define not(_state, id) site[id].state != _state
@@ -64,39 +64,26 @@ int main(int argc, char **argv)
 void kmc(void)
 {
    int index = 0;
-   int size = 2*_nsurf + _nslvr + _npvp;
+   int size = 2*_surf_l.size + _slvr_l.size + _pvp_l.size;
    int ids[size];
    double p_sum[size];
    double ktot = 0.0;
    double rate_addition_silver = (_max_slvr - _ttlslvr) / _V;
-   double rate_addition_pvp = (_max_pvp - _npvp) / _V;
+   double rate_addition_pvp = (_max_pvp - _pvp_l.size) / _V;
 
-   int j = 0;
-   for (int i = _surf_head; i != null; i++) {
-      j++;
-      if (j > 110000) break;
-   }
-   assert(j == _nsurf);
-   j = 0;
-   for (int i = _slvr_head; i != null; i++, j++);
-   assert(j == _nslvr);
-   j = 0;
-   for (int i = _pvp_head; i != null; i++, j++);
-   assert(j == _npvp);
-
-   for (int i = _surf_head; i != null; i++) {
+   for (int i = _surf_l.head; i != null; i++) {
       ids[index] = i;
       p_sum[index++] = ktot += rate_addition_silver;
    }
-   for (int i = _surf_head; i != null; i++) {
+   for (int i = _surf_l.head; i != null; i++) {
       ids[index] = i;
       p_sum[index++] = ktot += rate_addition_pvp;
    }
-   for (int i = _slvr_head; i != null; i++) {
+   for (int i = _slvr_l.head; i != null; i++) {
       ids[index] = i;
       p_sum[index++] = ktot += site[i].rate;
    }
-   for (int i = _pvp_head; i != null; i++) {
+   for (int i = _pvp_l.head; i != null; i++) {
       ids[index] = i;
       p_sum[index++] = ktot += site[i].rate;
    }
@@ -105,13 +92,13 @@ void kmc(void)
    for (int i = 0; i < index; i++) {
       if (r <= p_sum[i]) {
          int a = 0;
-         if (a <= i && i < (a += _nsurf))
+         if (a <= i && i < (a += _surf_l.size))
             add_silver(ids[i]);
-         else if (a <= i && i < (a += _nsurf))
+         else if (a <= i && i < (a += _surf_l.size))
             add_pvp(ids[i]);
-         else if (a <= i && i < (a += _nslvr))
+         else if (a <= i && i < (a += _slvr_l.size))
             rm_silver(ids[i]);
-         else if (a <= i && i < (a += _npvp))
+         else if (a <= i && i < (a += _pvp_l.size))
             rm_pvp(ids[i]);
          return;
       }
@@ -125,7 +112,7 @@ void initialize_kmc(int m, int rad)
    int nsites = 4*m*m*m;
    site = new_lattice(m);
    new_ll(ll, nsites);
-   
+
    _rng = gsl_rng_alloc(gsl_rng_mt19937);
    gsl_rng_set(_rng, _seed);
 
@@ -153,13 +140,14 @@ void initialize_kmc(int m, int rad)
 void add_silver(int id)
 {
    if (is(surface, id)) {
-      ll_remove(ll, id, _surf_head, _nsurf);
+      ll_remove(ll, id, _surf_l);
    }
    else if (not(vacuum, id)) {
-      return;
+      perror("Illegal addition of silver.");
+      exit(3);
    }
-   if (site[id].neighbors < 11) {
-      ll_insert(ll, id, _slvr_head, _nslvr);
+   if (site[id].neighbors < site[id].nn_count) {
+      ll_insert(ll, id, _slvr_l);
    }
    to(silver, id);
 
@@ -167,11 +155,11 @@ void add_silver(int id)
       int neigh = site[id].nn[i];
       site[neigh].neighbors++;
       if (is(vacuum, neigh)) {
-         ll_insert(ll, neigh, _surf_head, _nsurf);
+         ll_insert(ll, neigh, _surf_l);
          to(surface, neigh);
       }
-      else if (is(silver, id) && site[id].neighbors == site[id].nn_count) {
-         ll_remove(ll, neigh, _slvr_head, _nslvr);
+      else if (is(silver, neigh) && site[neigh].neighbors == site[neigh].nn_count) {
+         ll_remove(ll, neigh, _slvr_l);
       }
    }
    _ttlslvr++;
@@ -180,12 +168,12 @@ void add_silver(int id)
 
 void rm_silver(int id)
 {
-   if (not(silver, id)) return;
+   if (not(silver, id)) { perror("Illegal removal of silver"); exit(3); }
    if (site[id].neighbors < site[id].nn_count) {
-      ll_remove(ll, id, _slvr_head, _nslvr);
+      ll_remove(ll, id, _slvr_l);
    }
    if (site[id].neighbors > 0) {
-      ll_insert(ll, id, _surf_head, _nsurf);
+      ll_insert(ll, id, _surf_l);
       to(surface, id);
    }
    else {
@@ -196,11 +184,11 @@ void rm_silver(int id)
       int neigh = site[id].nn[i];
       site[neigh].neighbors--;
       if (is(surface, neigh) && site[neigh].neighbors == 0) {
-         ll_remove(ll, neigh, _surf_head, _nsurf);
+         ll_remove(ll, neigh, _surf_l);
          to(vacuum, neigh);
       }
-      else if (is(silver, neigh) && site[id].neighbors+1 == site[id].nn_count) {
-         ll_insert(ll, neigh, _slvr_head, _nslvr);
+      else if (is(silver, neigh) && site[neigh].neighbors+1 == site[neigh].nn_count) {
+         ll_insert(ll, neigh, _slvr_l);
       }
    }
    _ttlslvr--;
@@ -210,22 +198,23 @@ void rm_silver(int id)
 void add_pvp(int id)
 {
    if (is(surface, id)) {
-      ll_remove(ll, id, _surf_head, _nsurf);
+      ll_remove(ll, id, _surf_l);
    }
    else if (not(vacuum, id)) {
-      return;
+      perror("Illegal addition of pvp");
+      exit(3);
    }
-   ll_insert(ll, id, _pvp_head, _npvp);
+   ll_insert(ll, id, _pvp_l);
    to(pvp, id);
    update_nrg_around(id);
 }
 
 void rm_pvp(int id)
 {
-   if (not(pvp, id)) return;
-   ll_remove(ll, id, _pvp_head, _npvp);
+   if (not(pvp, id)) { perror("Illegal removal of pvp"); exit(3); };
+   ll_remove(ll, id, _pvp_l);
    if (site[id].neighbors > 0) {
-      ll_insert(ll, id, _surf_head, _nsurf);
+      ll_insert(ll, id, _surf_l);
       to(surface, id);
    }
    else {
@@ -236,7 +225,6 @@ void rm_pvp(int id)
 
 void update_nrg_around(int id)
 {
-   
    int cell, size = 0, cell_list[27];
    cell = id/4;
    int x, y, z, r, m = 30;
@@ -289,7 +277,7 @@ void draw(int max_slvr_d, int max_pvp_d, char *fn)
 
    fprintf(fp, "%d\n\n", max_slvr_d + max_pvp_d);
 
-   for (int i = _slvr_head; i != null; i = ll[i]) {
+   for (int i = _slvr_l.head; i != null; i = ll[i]) {
       fprintf(fp, "C");
       for (int j = 0; j < 3; fprintf(fp, " %d", site[i].pos[j++]));
       fprintf(fp, "\n");
@@ -305,7 +293,7 @@ void draw(int max_slvr_d, int max_pvp_d, char *fn)
    }
 
    count = 0;
-   for (int i = _pvp_head; i != null; i = ll[i]) {
+   for (int i = _pvp_l.head; i != null; i = ll[i]) {
       fprintf(fp, "F");
       for (int j = 0; j < 3; fprintf(fp, " %d", site[i].pos[j++]));
       fprintf(fp, "\n");
@@ -319,4 +307,44 @@ void draw(int max_slvr_d, int max_pvp_d, char *fn)
       for (int j = 0; j < 3; fprintf(fp, " %d", _center[j++]));
       fprintf(fp, "\n");
    }
+}
+
+void check(void)
+{
+   int fresh_ttl_slvr_count = 0;
+   int fresh_slvr_count = 0;
+   int fresh_surf_count = 0;
+   int fresh_pvp_count = 0;
+   for (int i = 0; i < 4*30*30*30; i++) {
+      if (is(vacuum, i)) continue;
+
+      if (is(silver, i)) {
+         if (site[i].neighbors < site[i].nn_count) {
+            fresh_slvr_count++;
+         }
+         fresh_ttl_slvr_count++;
+      }
+      else if (is(surface, i)) {
+         fresh_surf_count++;
+      }
+      else if (is(pvp, i)) {
+         fresh_pvp_count++;
+      }
+   }
+   printf("counted %d total silver, %d surface silver, %d surface sites, %d pvp\n",
+      fresh_ttl_slvr_count, fresh_slvr_count, fresh_surf_count, fresh_pvp_count);
+
+   int ll_count_slvr = 0;
+   int ll_count_pvp = 0;
+   int ll_count_surf = 0;
+   for (int i = _slvr_l.head; i >= 0; i++) {
+      ll_count_slvr++;
+   }
+   for (int i = _surf_l.head; i >= 0; i++) {
+      ll_count_surf++;
+   }
+   for (int i = _pvp_l.head; i >= 0; i++) {
+      ll_count_pvp++;
+   }
+   printf("counted %d in slvr_l, %d in surf_l, %d in pvp_l\n", ll_count_slvr, ll_count_surf, ll_count_pvp);
 }
