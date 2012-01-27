@@ -6,8 +6,10 @@
 #include <time.h>
 #include <gsl/gsl_rng.h>
 #include "lattice.h"
+#include "parse_arg.h"
 #include "ll.h"
 
+void parse_and_print_vars(int argc, char **argv);
 void initialize_kmc(int m, int rad);
 void kmc(void);
 
@@ -21,6 +23,7 @@ void draw(int max_slvr_d, int max_pvp_d, char *fn);
 site_t *site;
 double _T = 0.0350;
 double _V = 1e34;
+int _m = 30;
 int _rad = 4;
 int _max_slvr = 10000;
 int _max_pvp = 10000;
@@ -48,8 +51,9 @@ int _ttlslvr = 0;
 
 int main(int argc, char **argv)
 {
-   initialize_kmc(30, _rad);
-   
+   parse_and_print_vars(argc, argv);
+   initialize_kmc(_m, _rad);
+
    draw(3000, 3000, fn);
    for (int step = 1; step <= _nsteps; step++) {
       kmc();
@@ -57,7 +61,6 @@ int main(int argc, char **argv)
          draw(3000, 3000, fn);
       }
    }
-   
    return 0;
 }
 
@@ -223,6 +226,42 @@ void rm_pvp(int id)
 
 void update_nrg_around(int id)
 {
+   // #ifndef update_nrg_silver
+   // #define update_nrg_silver(_id) \
+   // do { \
+   //    site[_id].energy = slvr_nrg[site[_id].neighbors]; \
+   //    for (int i = 0; i < site[_id].nn_count; i++) { \
+   //       int _neigh = site[_id].nn[i]; \
+   //       if (is(silver, _neigh)) { \
+   //          site[_id].energy += slvr_nrg_d[site[_neigh].neighbors]; \
+   //       } \
+   //       else if (is(pvp, _neigh)) { \
+   //          site[_id].energy += pvp_nrg_d[site[_neigh].neighbors]; \
+   //       } \
+   //    } \
+   //    site[_id].rate = exp(-site[_id].energy / _T); \
+   // } while(0)
+   // #endif
+
+   // #ifndef update_nrg_pvp
+   // #define update_nrg_pvp(_id) \
+   // do { \
+   //    site[_id].energy = pvp_nrg[site[_id].neighbors]; \
+   //    site[_id].rate = exp(-site[_id].energy / _T); \
+   // } while(0)
+   // #endif
+
+   // if (is(silver, id)) update_nrg_silver(id);
+   // else if (is(pvp, id)) update_nrg_pvp(id);
+
+   // for (int neigh = 0; neigh < site[id].nn_count; neigh++) {
+   //    if (is(silver, neigh)) update_nrg_silver(neigh);
+   //    else if (is(pvp, neigh)) update_nrg_pvp(neigh);
+   // }
+
+   // for (int nneigh = 0; nneigh < site[id].nnn_count; nneigh++) {
+   //    if (is(silver, nneigh)) update_nrg_silver(nneigh);
+   // }
    int cell, size = 0, cell_list[27];
    cell = id/4;
    int x, y, z, r, m = 30;
@@ -234,7 +273,7 @@ void update_nrg_around(int id)
       for (int j = y-1; j <= y+1; j++) {
          if (j < 0 || j >= m) continue;
          for (int i = x-1; i <= x+1; i++) {
-            if (i < 0|| i >= m) continue;
+            if (i < 0 || i >= m) continue;
             cell_list[size++] = i + j*m + k*m*m;
          }
       }
@@ -254,6 +293,7 @@ void update_nrg_around(int id)
                   site[j].energy += pvp_nrg_d[site[neigh].neighbors];
                }
             }
+            
             site[j].rate = exp(-site[j].energy / _T);
          }
          else if (is(pvp, j)) {
@@ -305,4 +345,28 @@ void draw(int max_slvr_d, int max_pvp_d, char *fn)
       for (int j = 0; j < 3; fprintf(fp, " %d", _center[j++]));
       fprintf(fp, "\n");
    }
+}
+
+void parse_and_print_vars(int argc, char **argv)
+{
+   for (int i = 0; i < argc; i++) {
+      if (argv[i][0] == '-') {
+         char *flag = argv[i]+1;
+         char *arg  = argv[i+1];
+         parse_arg(flag, "m", _m, atoi(arg));
+         parse_arg(flag, "T", _T, atof(arg));
+         parse_arg(flag, "V", _V, atof(arg));
+         parse_arg(flag, "n", _nsteps, atoi(arg));
+         parse_arg(flag, "i", _interval, atoi(arg));
+      }
+   }
+
+   printf("\n");
+   printf("  Unit cells per edge (-m): %d\n", _m);
+   printf("  Temperature (-T): %0.4lf\n", _T);
+   printf("  Volume (-V): %0.4le\n", _V);
+   printf("  Seed radius (-r): %d\n", _rad);
+   printf("  Simulation steps (-n): %d\n", _nsteps);
+   printf("  Drawing interval (-i): %d\n", _interval);
+   printf("\n");
 }

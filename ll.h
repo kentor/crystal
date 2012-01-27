@@ -1,5 +1,5 @@
-#ifndef LL_H
-#define LL_H
+#ifndef __ll_h__
+#define __ll_h__
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

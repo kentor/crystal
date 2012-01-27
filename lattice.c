@@ -13,10 +13,12 @@ site_t *new_lattice(int _m)
       site[n].id = n;
       site[n].neighbors = 0;
       site[n].nn_count = 0;
+      site[n].nnn_count = 0;
       site[n].state = vacuum;
       site[n].energy = 0.0;
       site[n].rate = 1.0;
       for (int i = 0; i < 12; site[n].nn[i++] = -1);
+      for (int i = 0; i < 42; site[n].nnn[i++] = -1);
    }
 
    for (int n = 0; n < _nsites; n+=4) {
@@ -50,12 +52,45 @@ site_t *new_lattice(int _m)
       } while (0)
       #endif
 
+      #ifndef make_neighbors_neighbors_of
+      #define make_neighbors_neighbors_of(id1, _x, _y, _z, _m) \
+      do { \
+         int id2 = find_id_by_pos((_x), (_y), (_z), (_m)); \
+         if (id2 != -1) { \
+            site[id1].nnn[site[id1].nnn_count++] = id2; \
+            site[id2].nnn[site[id2].nnn_count++] = id1; \
+         } \
+      } while (0)
+      #endif
+
       make_neighbors_of(n, x+1, y+1, z  , _m);
       make_neighbors_of(n, x+1, y-1, z  , _m);
       make_neighbors_of(n, x+1, y  , z+1, _m);
       make_neighbors_of(n, x+1, y  , z-1, _m);
       make_neighbors_of(n, x  , y+1, z+1, _m);
       make_neighbors_of(n, x  , y+1, z-1, _m);
+
+      make_neighbors_neighbors_of(n, x+2, y+2, z  , _m);
+      make_neighbors_neighbors_of(n, x+2, y  , z  , _m);
+      make_neighbors_neighbors_of(n, x  , y+2, z  , _m);
+      make_neighbors_neighbors_of(n, x+2, y+1, z+1, _m);
+      make_neighbors_neighbors_of(n, x+2, y+1, z-1, _m);
+      make_neighbors_neighbors_of(n, x+1, y+2, z+1, _m);
+      make_neighbors_neighbors_of(n, x+1, y+2, z-1, _m);
+      make_neighbors_neighbors_of(n, x+2, y-2, z  , _m);
+      make_neighbors_neighbors_of(n, x+2, y-1, z+1, _m);
+      make_neighbors_neighbors_of(n, x+2, y-1, z-1, _m);
+      make_neighbors_neighbors_of(n, x+1, y-2, z-1, _m);
+      make_neighbors_neighbors_of(n, x+1, y-2, z+1, _m);
+      make_neighbors_neighbors_of(n, x+2, y  , z+2, _m);
+      make_neighbors_neighbors_of(n, x  , y  , z+2, _m);
+      make_neighbors_neighbors_of(n, x+1, y+1, z+2, _m);
+      make_neighbors_neighbors_of(n, x+1, y-1, z+2, _m);
+      make_neighbors_neighbors_of(n, x+2, y  , z-2, _m);
+      make_neighbors_neighbors_of(n, x+1, y-1, z-2, _m);
+      make_neighbors_neighbors_of(n, x+1, y+1, z-2, _m);
+      make_neighbors_neighbors_of(n, x  , y+2, z+2, _m);
+      make_neighbors_neighbors_of(n, x  , y+2, z-2, _m);
    }
 
    return site;
