@@ -1,2 +1,2 @@
-kmc.o: new_kmc.c new_lattice.c auxiliary.c new_lattice.h
-	gcc -lm -lgsl -lgslcblas -O2 -o kmc.o new_kmc.c new_lattice.c auxiliary.c
+kmc: kmc.c lattice.c lattice.h ll.h parse_arg.h
+	gcc -o kmc -lm -lgsl -lgslcblas -O3 -std=gnu99 kmc.c lattice.c
