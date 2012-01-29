@@ -1,12 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <stdbool.h>
 #include <math.h>
 #include <time.h>
 #include <gsl/gsl_rng.h>
-#include "lattice.h"
 #include "parse_arg.h"
+#include "lattice.h"
 #include "ll.h"
 
 void parse_and_print_vars(int argc, char **argv);
@@ -27,8 +26,8 @@ int _m = 30;
 int _rad = 4;
 int _max_slvr = 10000;
 int _max_pvp = 10000;
-int _nsteps = 10000000;
-int _interval = 10000;
+int _nsteps = 5000000;
+int _interval = 5000;
 int _seed;
 int _max_slvr_d, _max_pvp_d;
 int _center[3];
@@ -226,81 +225,39 @@ void rm_pvp(int id)
 
 void update_nrg_around(int id)
 {
-   // #ifndef update_nrg_silver
-   // #define update_nrg_silver(_id) \
-   // do { \
-   //    site[_id].energy = slvr_nrg[site[_id].neighbors]; \
-   //    for (int i = 0; i < site[_id].nn_count; i++) { \
-   //       int _neigh = site[_id].nn[i]; \
-   //       if (is(silver, _neigh)) { \
-   //          site[_id].energy += slvr_nrg_d[site[_neigh].neighbors]; \
-   //       } \
-   //       else if (is(pvp, _neigh)) { \
-   //          site[_id].energy += pvp_nrg_d[site[_neigh].neighbors]; \
-   //       } \
-   //    } \
-   //    site[_id].rate = exp(-site[_id].energy / _T); \
-   // } while(0)
-   // #endif
+   #define update_nrg_silver(_id) \
+   do { \
+      site[_id].energy = slvr_nrg[site[_id].neighbors]; \
+      for (int i = 0; i < site[_id].nn_count; i++) { \
+         int _neigh = site[_id].nn[i]; \
+         if (is(silver, _neigh)) { \
+            site[_id].energy += slvr_nrg_d[site[_neigh].neighbors]; \
+         } \
+         else if (is(pvp, _neigh)) { \
+            site[_id].energy += pvp_nrg_d[site[_neigh].neighbors]; \
+         } \
+      } \
+      site[_id].rate = exp(-site[_id].energy / _T); \
+   } while(0)
 
-   // #ifndef update_nrg_pvp
-   // #define update_nrg_pvp(_id) \
-   // do { \
-   //    site[_id].energy = pvp_nrg[site[_id].neighbors]; \
-   //    site[_id].rate = exp(-site[_id].energy / _T); \
-   // } while(0)
-   // #endif
+   #define update_nrg_pvp(_id) \
+   do { \
+      site[_id].energy = pvp_nrg[site[_id].neighbors]; \
+      site[_id].rate = exp(-site[_id].energy / _T); \
+   } while(0)
 
-   // if (is(silver, id)) update_nrg_silver(id);
-   // else if (is(pvp, id)) update_nrg_pvp(id);
+   if (is(silver, id)) update_nrg_silver(id);
+   else if (is(pvp, id)) update_nrg_pvp(id);
 
-   // for (int neigh = 0; neigh < site[id].nn_count; neigh++) {
-   //    if (is(silver, neigh)) update_nrg_silver(neigh);
-   //    else if (is(pvp, neigh)) update_nrg_pvp(neigh);
-   // }
-
-   // for (int nneigh = 0; nneigh < site[id].nnn_count; nneigh++) {
-   //    if (is(silver, nneigh)) update_nrg_silver(nneigh);
-   // }
-   int cell, size = 0, cell_list[27];
-   cell = id/4;
-   int x, y, z, r, m = 30;
-   z = cell / (m*m); r = cell % (m*m);
-   y = r / m; x = r % m;
-
-   for (int k = z-1; k <= z+1; k++) {
-      if (k < 0 || k >= m) continue;
-      for (int j = y-1; j <= y+1; j++) {
-         if (j < 0 || j >= m) continue;
-         for (int i = x-1; i <= x+1; i++) {
-            if (i < 0 || i >= m) continue;
-            cell_list[size++] = i + j*m + k*m*m;
-         }
-      }
+   for (int i = 0; i < site[id].nn_count; i++) {
+      int neigh = site[id].nn[i];
+      if (is(silver, neigh)) update_nrg_silver(neigh);
+      else if (is(pvp, neigh)) update_nrg_pvp(neigh);
    }
 
-   for (int i = 0; i < size; i++) {
-      for (int j = cell_list[i]*4; j < cell_list[i]*4+4; j++) {
-         if (is(silver, j)) {
-            site[j].energy = slvr_nrg[site[j].neighbors];
-
-            for (int k = 0; k < site[j].nn_count; k++) {
-               int neigh = site[j].nn[k];
-               if (is(silver, neigh)) {
-                  site[j].energy += slvr_nrg_d[site[neigh].neighbors];
-               }
-               else if (is(pvp, neigh)) {
-                  site[j].energy += pvp_nrg_d[site[neigh].neighbors];
-               }
-            }
-            
-            site[j].rate = exp(-site[j].energy / _T);
-         }
-         else if (is(pvp, j)) {
-            site[j].energy = pvp_nrg[site[j].neighbors];
-            site[j].rate = exp(-site[j].energy / _T);
-         }
-      }
+   for (int i = 0; i < site[id].nnn_count; i++) {
+      int nneigh = site[id].nnn[i];
+      if (is(silver, nneigh)) update_nrg_silver(nneigh);
    }
 }
 

@@ -41,7 +41,6 @@ site_t *new_lattice(int _m)
       int x, y, z;
       x = site[n].pos[0]; y = site[n].pos[1]; z = site[n].pos[2];
 
-      #ifndef make_neighbors_of
       #define make_neighbors_of(id1, _x, _y, _z, _m) \
       do { \
          int id2 = find_id_by_pos((_x), (_y), (_z), (_m)); \
@@ -50,9 +49,7 @@ site_t *new_lattice(int _m)
             site[id2].nn[site[id2].nn_count++] = id1; \
          } \
       } while (0)
-      #endif
 
-      #ifndef make_neighbors_neighbors_of
       #define make_neighbors_neighbors_of(id1, _x, _y, _z, _m) \
       do { \
          int id2 = find_id_by_pos((_x), (_y), (_z), (_m)); \
@@ -61,7 +58,6 @@ site_t *new_lattice(int _m)
             site[id2].nnn[site[id2].nnn_count++] = id1; \
          } \
       } while (0)
-      #endif
 
       make_neighbors_of(n, x+1, y+1, z  , _m);
       make_neighbors_of(n, x+1, y-1, z  , _m);

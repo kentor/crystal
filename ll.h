@@ -18,8 +18,14 @@ do { \
 
 #define ll_insert(_ll, _value, _list) \
 do { \
-   if (_ll[_value] != null) { perror("Illegal insertion error."); abort(); } \
-   if (_list.size == 0 && _list.head != null) { perror("Head should be null when inserting first element."); abort(); } \
+   if (_ll[_value] != null) { \
+      perror("Illegal insertion error."); \
+      abort(); \
+   } \
+   if (_list.size == 0 && _list.head != null) { \
+      perror("Head should be null when inserting first element."); \
+      abort(); \
+   } \
    _ll[_value] = _list.head; \
    _list.head = _value; \
    _list.size++; \

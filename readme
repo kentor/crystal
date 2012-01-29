@@ -1,1 +1,5 @@
 Simulation of silver nanocrystal growth.
+
+Usage:
+make
+./kmc
