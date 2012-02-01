@@ -25,11 +25,11 @@ double _V = 1e34;
 int _m = 30;
 int _rad = 4;
 int _max_slvr = 10000;
-int _max_pvp = 10000;
-int _nsteps = 5000000;
-int _interval = 5000;
+int _max_pvp = 1;
+int _nsteps = 3000000;
+int _interval = 3000;
 int _seed;
-int _max_slvr_d, _max_pvp_d;
+int _max_slvr_d = 3000, _max_pvp_d = 3000;
 int _center[3];
 gsl_rng *_rng;
 bool _draw = true;
@@ -53,11 +53,11 @@ int main(int argc, char **argv)
    parse_and_print_vars(argc, argv);
    initialize_kmc(_m, _rad);
 
-   draw(3000, 3000, fn);
+   draw(_max_slvr_d, _max_pvp_d, fn);
    for (int step = 1; step <= _nsteps; step++) {
       kmc();
       if (step % _interval == 0) {
-         draw(3000, 3000, fn);
+         draw(_max_slvr_d, _max_pvp_d, fn);
       }
    }
    return 0;
@@ -77,14 +77,17 @@ void kmc(void)
       ids[index] = i;
       p_sum[index++] = ktot += rate_addition_silver;
    }
+
    for (int i = _surf_l.head; i != null; i = ll[i]) {
       ids[index] = i;
       p_sum[index++] = ktot += rate_addition_pvp;
    }
+
    for (int i = _slvr_l.head; i != null; i = ll[i]) {
       ids[index] = i;
       p_sum[index++] = ktot += site[i].rate;
    }
+
    for (int i = _pvp_l.head; i != null; i = ll[i]) {
       ids[index] = i;
       p_sum[index++] = ktot += site[i].rate;
@@ -105,7 +108,6 @@ void kmc(void)
          return;
       }
    }
-
    abort();
 }
 
@@ -125,9 +127,11 @@ void initialize_kmc(int m, int rad)
 
    int id = m/2;
    id = 4*(id + id*m + id*m*m);
+
    for (int i = 0; i < 3; i++) {
       _center[i] = site[id].pos[i];
    }
+
    for (int i = 0; i < nsites; i++) {
       int dx, dy, dz;
       dx = site[i].pos[0] - _center[0];
@@ -306,6 +310,8 @@ void draw(int max_slvr_d, int max_pvp_d, char *fn)
 
 void parse_and_print_vars(int argc, char **argv)
 {
+   _seed = time(0);
+
    for (int i = 0; i < argc; i++) {
       if (argv[i][0] == '-') {
          char *flag = argv[i]+1;
@@ -313,17 +319,26 @@ void parse_and_print_vars(int argc, char **argv)
          parse_arg(flag, "m", _m, atoi(arg));
          parse_arg(flag, "T", _T, atof(arg));
          parse_arg(flag, "V", _V, atof(arg));
+         parse_arg(flag, "s", _seed, atoi(arg));
          parse_arg(flag, "n", _nsteps, atoi(arg));
          parse_arg(flag, "i", _interval, atoi(arg));
+         parse_arg(flag, "ms", _max_slvr_d, atoi(arg));
+         parse_arg(flag, "mp", _max_pvp_d, atoi(arg));
       }
    }
+
+   if (_max_slvr_d > _max_slvr) _max_slvr_d = _max_slvr;
+   if (_max_pvp_d > _max_pvp) _max_pvp_d = _max_pvp;
 
    printf("\n");
    printf("  Unit cells per edge (-m): %d\n", _m);
    printf("  Temperature (-T): %0.4lf\n", _T);
    printf("  Volume (-V): %0.4le\n", _V);
+   printf("  Seed (-s): %d\n", _seed);
    printf("  Seed radius (-r): %d\n", _rad);
    printf("  Simulation steps (-n): %d\n", _nsteps);
    printf("  Drawing interval (-i): %d\n", _interval);
+   printf("  Simulation steps (-ms): %d\n", _max_slvr_d);
+   printf("  Drawing interval (-mp): %d\n", _max_pvp_d);
    printf("\n");
 }
