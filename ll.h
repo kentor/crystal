@@ -34,8 +34,10 @@ do { \
 #define ll_remove(_ll, _value, _list) \
 do { \
    int i = _list.head; \
-   if (i == _value) _list.head = _ll[_value]; \
-   else while (_ll[i] != _value) i = _ll[i]; \
+   if (i == _value) \
+      _list.head = _ll[_value]; \
+   else while (_ll[i] != _value) \
+      i = _ll[i]; \
    _ll[i] = _ll[_value]; \
    _ll[_value] = null; \
    _list.size--; \
