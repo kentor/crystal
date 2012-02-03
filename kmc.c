@@ -322,8 +322,11 @@ void parse_and_print_vars(int argc, char **argv)
          parse_arg(flag, "s", _seed, atoi(arg));
          parse_arg(flag, "n", _nsteps, atoi(arg));
          parse_arg(flag, "i", _interval, atoi(arg));
-         parse_arg(flag, "ms", _max_slvr_d, atoi(arg));
-         parse_arg(flag, "mp", _max_pvp_d, atoi(arg));
+         parse_arg(flag, "ms", _max_slvr, atoi(arg));
+         parse_arg(flag, "mp", _max_pvp, atoi(arg));
+         parse_arg(flag, "msd", _max_slvr_d, atoi(arg));
+         parse_arg(flag, "mpd", _max_pvp_d, atoi(arg));
+         parse_arg(flag, "o", fn, arg);
       }
    }
 
@@ -338,7 +341,10 @@ void parse_and_print_vars(int argc, char **argv)
    printf("  Seed radius (-r): %d\n", _rad);
    printf("  Simulation steps (-n): %d\n", _nsteps);
    printf("  Drawing interval (-i): %d\n", _interval);
-   printf("  Simulation steps (-ms): %d\n", _max_slvr_d);
-   printf("  Drawing interval (-mp): %d\n", _max_pvp_d);
+   printf("  Initial total silver (-ms): %d\n", _max_slvr);
+   printf("  Initial total pvp (-mp): %d\n", _max_pvp);
+   printf("  Max silver drawn (-msd): %d\n", _max_slvr_d);
+   printf("  Max pvp drawn (-mpd): %d\n", _max_pvp_d);
+   printf("  Trajectory file (-o): %s\n", fn);
    printf("\n");
 }
