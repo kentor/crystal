@@ -125,20 +125,28 @@ void initialize_kmc(int m, int rad)
       pvp_nrg_d[i] = pvp_nrg[i] - pvp_nrg[i-1];
    }
 
-   int id = m/2;
-   id = 4*(id + id*m + id*m*m);
+   int center = m/2;
+   int id = 4*(center + center*m + center*m*m);
 
    for (int i = 0; i < 3; i++) {
       _center[i] = site[id].pos[i];
    }
 
-   for (int i = 0; i < nsites; i++) {
-      int dx, dy, dz;
-      dx = site[i].pos[0] - _center[0];
-      dy = site[i].pos[1] - _center[1];
-      dz = site[i].pos[2] - _center[2];
-      if (dx*dx + dy*dy + dz*dz < rad*rad) {
-         add_silver(i);
+   // for (int i = 0; i < nsites; i++) {
+   //    int dx, dy, dz;
+   //    dx = site[i].pos[0] - _center[0];
+   //    dy = site[i].pos[1] - _center[1];
+   //    dz = site[i].pos[2] - _center[2];
+   //    if (dx*dx + dy*dy + dz*dz < rad*rad) {
+   //       add_silver(i);
+   //    }
+   // }
+   for (int k = center - rad/2; k < center + rad/2; k++) {
+      for (int j = center - rad/2; j < center + rad/2; j++) {
+         for (int i = center - rad/2; i < center + rad/2; i++) {
+            int id = 4*(i + j*m + k*m*m);
+            for (int site = id; site < id + 4; add_silver(site++));
+         }
       }
    }
 }
