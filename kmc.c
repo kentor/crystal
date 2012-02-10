@@ -258,18 +258,28 @@ void update_nrg_around(int id)
       site[_id].rate = exp(-site[_id].energy / _T); \
    } while(0)
 
-   if (is(silver, id)) update_nrg_silver(id);
-   else if (is(pvp, id)) update_nrg_pvp(id);
+   if (is(silver, id)) {
+      update_nrg_silver(id);
+   }
+   else if (is(pvp, id)) {
+      update_nrg_pvp(id);
+   }
 
    for (int i = 0; i < site[id].nn_count; i++) {
       int neigh = site[id].nn[i];
-      if (is(silver, neigh)) update_nrg_silver(neigh);
-      else if (is(pvp, neigh)) update_nrg_pvp(neigh);
+      if (is(silver, neigh)) {
+         update_nrg_silver(neigh);
+      }
+      else if (is(pvp, neigh)) {
+         update_nrg_pvp(neigh);
+      }
    }
 
    for (int i = 0; i < site[id].nnn_count; i++) {
-      int nneigh = site[id].nnn[i];
-      if (is(silver, nneigh)) update_nrg_silver(nneigh);
+      int next_neigh = site[id].nnn[i];
+      if (is(silver, next_neigh)) {
+         update_nrg_silver(next_neigh);
+      }
    }
 }
 
